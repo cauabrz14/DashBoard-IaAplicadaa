@@ -5,174 +5,359 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Vendas - Q1 2025</title>
     
-    <!-- Tailwind CSS para estilização rápida e responsiva -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Chart.js para gráficos -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
+        :root {
+            --white: #ffffff;
+            --black: #000000;
+            --transparent: transparent;
+            --c-blue-500: #3b82f6;
+            --c-indigo-300: #a5b4fc;
+            --c-blue-300: #93c5fd;
+            --c-violet-200: #ddd6fe;
+            --c-blue-400: #60a5fa;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #F1F5F9; /* Slate-100 */
-            color: #0F172A; /* Slate-900 */
+            background-color: #F1F5F9;
+            color: #0F172A;
+            margin: 0;
+            overflow-x: hidden;
         }
+
+        /* --- Aurora Background CSS Logic --- */
+        .aurora-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background-color: #fafafa;
+        }
+
+        .aurora-blob {
+            position: absolute;
+            inset: -10px;
+            opacity: 0.5;
+            will-change: transform;
+            filter: blur(10px);
+            pointer-events: none;
+            background-image: 
+                repeating-linear-gradient(100deg, var(--white) 0%, var(--white) 7%, var(--transparent) 10%, var(--transparent) 12%, var(--white) 16%),
+                repeating-linear-gradient(100deg, var(--c-blue-500) 10%, var(--c-indigo-300) 15%, var(--c-blue-300) 20%, var(--c-violet-200) 25%, var(--c-blue-400) 30%);
+            background-size: 300% 200%;
+            background-position: 50% 50%, 50% 50%;
+        }
+
+        .aurora-blob::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: inherit;
+            background-size: 200% 100%;
+            background-attachment: fixed;
+            mix-blend-mode: difference;
+            animation: aurora 60s linear infinite;
+        }
+
+        @keyframes aurora {
+            from { background-position: 50% 50%, 50% 50%; }
+            to { background-position: 350% 50%, 350% 50%; }
+        }
+
+        .radial-mask {
+            mask-image: radial-gradient(ellipse at 100% 0%, black 10%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 10%, transparent 70%);
+        }
+
+        /* --- Standard Dashboard Card --- */
         .card {
-            background-color: white;
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
             border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             padding: 1.5rem;
             transition: transform 0.2s;
-        }
-        .card:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .chart-container {
             position: relative;
             height: 300px;
             width: 100%;
         }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
+
+        /* --- Display Card Styles --- */
+        .display-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-radius: 0.75rem;
+            border-width: 2px;
+            border-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            padding: 1rem;
+            transition: all 0.3s ease;
+            user-select: none;
+            overflow: hidden;
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
+        .display-card:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background-color: rgba(255, 255, 255, 0.9);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1; 
-            border-radius: 4px;
+        .display-card::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: -5%;
+            height: 110%;
+            width: 20rem;
+            background: linear-gradient(to left, rgba(255,255,255,0.4), transparent);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.7s;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; 
+        .display-card:hover::after { opacity: 1; }
+        
+        /* --- Custom Donut Chart CSS --- */
+        .donut-segment {
+            transform-origin: center;
+            transition: filter 0.3s ease-out, transform 0.3s ease-out, stroke-dashoffset 1s ease-out, opacity 0.5s ease-out;
+            cursor: pointer;
         }
+        .donut-segment:hover {
+            z-index: 10;
+        }
+        .donut-center-text {
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col relative">
 
-    <!-- Header -->
-    <header class="bg-slate-900 text-white p-6 shadow-lg">
-        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold">Dashboard de Vendas</h1>
-                <p class="text-slate-400 text-sm mt-1">Análise de Performance Q1 2025</p>
+    <div class="aurora-container">
+        <div class="aurora-blob radial-mask"></div>
+    </div>
+
+    <div class="relative z-10 flex flex-col min-h-screen">
+        
+        <!-- Header -->
+        <header class="bg-slate-900/95 backdrop-blur-md text-white p-6 shadow-lg border-b border-slate-700">
+            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-200 to-blue-400 flex items-center gap-2">
+                        <i data-lucide="layout-dashboard" class="text-teal-400"></i> Dashboard de Vendas
+                    </h1>
+                    <p class="text-slate-300 text-sm mt-1">Análise de Performance Q1 2025</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <button onclick="exportCSV()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 shadow-lg">
+                        <i data-lucide="download" class="size-4"></i> Exportar CSV
+                    </button>
+                </div>
             </div>
-            <div class="mt-4 md:mt-0 flex gap-3">
-                <button onclick="exportCSV()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2">
-                    <span>📥</span> Exportar CSV
+        </header>
+
+        <!-- Controls -->
+        <section class="container mx-auto mt-8 px-4">
+            <div class="card flex flex-col lg:flex-row gap-4 items-end lg:items-center justify-between">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row gap-4 w-full lg:w-auto">
+                    <!-- Filtro Data -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1">Início</label>
+                        <input type="date" id="filterStartDate" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1">Fim</label>
+                        <input type="date" id="filterEndDate" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    </div>
+                    <!-- Filtro Moeda -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1">Moeda</label>
+                        <select id="filterCurrency" onchange="updateCurrency()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 w-32">
+                            <option value="EUR">EUR (€)</option>
+                            <option value="BRL">BRL (R$)</option>
+                        </select>
+                    </div>
+                    <!-- Filtros Dropdown -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1">Região</label>
+                        <select id="filterRegion" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 w-40">
+                            <option value="all">Todas</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1">Vendedor</label>
+                        <select id="filterSeller" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 w-40">
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="resetFilters()" class="text-sm text-blue-600 hover:text-blue-800 font-medium underline whitespace-nowrap mt-4 lg:mt-0 flex items-center gap-1">
+                    <i data-lucide="rotate-ccw" class="size-3"></i> Limpar
                 </button>
             </div>
-        </div>
-    </header>
+        </section>
 
-    <!-- Controls & Filters -->
-    <section class="container mx-auto mt-8 px-4">
-        <div class="bg-white p-4 rounded-lg shadow-sm flex flex-col md:flex-row gap-4 items-end md:items-center justify-between">
-            <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                <!-- Filtro Região -->
-                <div class="flex flex-col">
-                    <label for="filterRegion" class="text-xs font-bold text-slate-500 uppercase mb-1">Região</label>
-                    <select id="filterRegion" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        <option value="all">Todas as Regiões</option>
-                        <!-- Opções preenchidas via JS -->
-                    </select>
+        <!-- KPIs -->
+        <section class="container mx-auto mt-10 px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="display-card -skew-y-2 border-l-4 border-l-teal-500 group">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="relative inline-block rounded-full bg-teal-100 p-2">
+                            <i data-lucide="wallet" class="size-5 text-teal-600"></i>
+                        </span>
+                        <p class="text-sm font-medium text-teal-600">Receita Total</p>
+                    </div>
+                    <p class="text-3xl font-bold text-slate-900" id="kpiTotalSales">€0,00</p>
+                    <p class="text-slate-500 text-sm mt-1">Volume total faturado</p>
                 </div>
-                <!-- Filtro Vendedor -->
-                <div class="flex flex-col">
-                    <label for="filterSeller" class="text-xs font-bold text-slate-500 uppercase mb-1">Vendedor</label>
-                    <select id="filterSeller" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        <option value="all">Todos os Vendedores</option>
-                        <!-- Opções preenchidas via JS -->
-                    </select>
+
+                <div class="display-card -skew-y-2 border-l-4 border-l-blue-500 group">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="relative inline-block rounded-full bg-blue-100 p-2">
+                            <i data-lucide="package" class="size-5 text-blue-600"></i>
+                        </span>
+                        <p class="text-sm font-medium text-blue-600">Unidades</p>
+                    </div>
+                    <p class="text-3xl font-bold text-slate-900" id="kpiTotalUnits">0</p>
+                    <p class="text-slate-500 text-sm mt-1">Produtos vendidos</p>
+                </div>
+
+                <div class="display-card -skew-y-2 border-l-4 border-l-amber-500 group">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="relative inline-block rounded-full bg-amber-100 p-2">
+                            <i data-lucide="trending-up" class="size-5 text-amber-600"></i>
+                        </span>
+                        <p class="text-sm font-medium text-amber-600">Ticket Médio</p>
+                    </div>
+                    <p class="text-3xl font-bold text-slate-900" id="kpiAvgTicket">€0,00</p>
+                    <p class="text-slate-500 text-sm mt-1">Média por venda</p>
                 </div>
             </div>
-            
-            <button onclick="resetFilters()" class="text-sm text-blue-600 hover:text-blue-800 font-medium underline">
-                Limpar Filtros
-            </button>
-        </div>
-    </section>
+        </section>
 
-    <!-- KPIs -->
-    <section class="container mx-auto mt-6 px-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- KPI 1 -->
-            <div class="card border-l-4 border-teal-500">
-                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wider">Vendas Totais</h3>
-                <div class="mt-2 flex items-baseline">
-                    <span class="text-3xl font-bold text-slate-900" id="kpiTotalSales">€0,00</span>
+        <!-- Main Content Grid -->
+        <section class="container mx-auto mt-10 px-4 mb-12">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Timeline Chart (Takes 2 columns) -->
+                <div class="card lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-slate-800">Evolução de Vendas (Real vs Simulado)</h3>
+                        <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200" id="simIndicator" style="display:none">
+                            Simulação Ativa
+                        </span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartTimeline"></canvas>
+                    </div>
                 </div>
+
+                <!-- Right Column: Simulator & Top Sellers -->
+                <div class="flex flex-col gap-6">
+                    
+                    <!-- SIMULATOR -->
+                    <div class="card flex flex-col items-center gap-4 p-4 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/80">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="calculator" class="text-slate-400 size-5"></i>
+                            <h1 class="text-xl font-bold text-slate-700">Simulador de Cenário</h1>
+                        </div>
+                        
+                        <div class="flex flex-col items-center bg-white w-full py-4 rounded-lg shadow-sm border border-slate-100">
+                            <span class="text-xs text-slate-400 uppercase tracking-wide mb-1">Ajuste Percentual</span>
+                            <h2 class="text-3xl font-bold text-blue-600 transition-all duration-300" id="simValue">0%</h2>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <button onclick="updateSimulation(-5)" class="w-12 h-12 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex items-center justify-center text-xl font-bold text-slate-600 transition-all active:scale-95" aria-label="Diminuir">
+                                -
+                            </button>
+                            <button onclick="updateSimulation(5)" class="w-12 h-12 rounded-full bg-blue-600 shadow-md shadow-blue-200 hover:bg-blue-700 flex items-center justify-center text-xl font-bold text-white transition-all active:scale-95" aria-label="Aumentar">
+                                +
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Top Sellers Widget (Horizontal Layout) -->
+                    <div class="relative flex flex-col items-center w-full">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 self-start w-full border-b pb-2 flex justify-between items-center">
+                            Top 3 Vendedores
+                            <i data-lucide="trophy" class="size-4 text-amber-500"></i>
+                        </h3>
+                        <!-- Horizontal Grid Container -->
+                        <div id="sellersContainer" class="grid grid-cols-3 gap-3 w-full">
+                            <!-- Cards injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row Charts -->
+                <div class="card">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Por Região</h3>
+                    <div class="chart-container">
+                        <canvas id="chartRegion"></canvas>
+                    </div>
+                </div>
+
+                <div class="card lg:col-span-2 flex flex-col md:flex-row items-center">
+                    <div class="w-full md:w-1/2 p-4">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">Performance por Produto</h3>
+                        <div class="space-y-4">
+                            <p class="text-sm text-slate-500">Distribuição de receita entre categorias. Passe o rato no gráfico para ver detalhes.</p>
+                            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                <span class="text-xs text-slate-400 uppercase">Produto Mais Vendido</span>
+                                <p class="font-bold text-slate-800 text-lg" id="bestSellingProduct">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- CUSTOM SVG DONUT CONTAINER -->
+                    <div class="w-full md:w-1/2 h-[300px] flex items-center justify-center relative" id="customDonutContainer">
+                        <!-- SVG will be injected here -->
+                    </div>
+                </div>
+
             </div>
-            <!-- KPI 2 -->
-            <div class="card border-l-4 border-blue-500">
-                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wider">Unidades Vendidas</h3>
-                <div class="mt-2 flex items-baseline">
-                    <span class="text-3xl font-bold text-slate-900" id="kpiTotalUnits">0</span>
-                </div>
-            </div>
-            <!-- KPI 3 -->
-            <div class="card border-l-4 border-amber-500">
-                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wider">Ticket Médio</h3>
-                <div class="mt-2 flex items-baseline">
-                    <span class="text-3xl font-bold text-slate-900" id="kpiAvgTicket">€0,00</span>
-                </div>
-            </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Charts Grid -->
-    <section class="container mx-auto mt-6 px-4 mb-12">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- Chart 1: Evolução Temporal -->
-            <div class="card lg:col-span-2">
-                <h3 class="text-lg font-bold text-slate-800 mb-4">Evolução de Vendas (Q1)</h3>
-                <div class="chart-container">
-                    <canvas id="chartTimeline"></canvas>
-                </div>
-            </div>
+        <footer class="bg-slate-900/90 backdrop-blur text-slate-400 py-6 text-center text-sm mt-auto border-t border-slate-800">
+            <p>Gerado automaticamente com base no Relatório de Vendas Q1 2025.</p>
+        </footer>
+    </div>
 
-            <!-- Chart 2: Região -->
-            <div class="card">
-                <h3 class="text-lg font-bold text-slate-800 mb-4">Vendas por Região</h3>
-                <div class="chart-container">
-                    <canvas id="chartRegion"></canvas>
-                </div>
-            </div>
-
-            <!-- Chart 3: Top Vendedores -->
-            <div class="card">
-                <h3 class="text-lg font-bold text-slate-800 mb-4">Ranking Vendedores</h3>
-                <div class="chart-container">
-                    <canvas id="chartSellers"></canvas>
-                </div>
-            </div>
-
-            <!-- Chart 4: Produtos -->
-            <div class="card lg:col-span-2 flex flex-col md:flex-row items-center">
-                <div class="w-full md:w-1/2">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4">Performance por Produto</h3>
-                    <p class="text-sm text-slate-500 mb-4">Distribuição da receita gerada por categoria de produto.</p>
-                </div>
-                <div class="w-full md:w-1/2 h-[300px] flex justify-center">
-                    <canvas id="chartProducts"></canvas>
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-sm mt-auto">
-        <p>Gerado automaticamente com base no Relatório de Vendas Q1 2025.</p>
-    </footer>
-
-    <!-- JS Logic -->
     <script>
-        // --- 1. EXTRAÇÃO E PARSING DE DADOS ---
-        // Dados fidedignos extraídos da tabela do relatório.pdf e corrigidos conforme instruções.
+        // Initialize Icons
+        lucide.createIcons();
+
+        // --- GLOBAL STATE ---
+        let simulationPercentage = 0;
+        let currentCurrency = 'EUR'; 
+        
+        const currencyRates = { 'EUR': 1, 'BRL': 6.15 };
+
         const rawPdfData = [
             { date: "02/01/2025", region: "Norte", seller: "João Silva", product: "Portátil Pro 15\"", units: "2", price: "1.200,00", total: "2.400,00" },
             { date: "05/01/2025", region: "Lisboa", seller: "Ana Gomes", product: "Monitor 27\"", units: "5", price: "300,00", total: "1.500,00" },
@@ -186,55 +371,36 @@
             { date: "15/03/2025", region: "Lisboa", seller: "Ana Gomes", product: "Portátil Pro 13\"", units: "2", price: "1.000,00", total: "2.000,00" }
         ];
 
-        // Função auxiliar para converter moeda europeia (1.000,00) para float JS (1000.00)
         function parseCurrency(str) {
             if (!str) return 0;
             const cleanStr = str.replace(/\./g, '').replace(',', '.');
             return parseFloat(cleanStr);
         }
-
-        // Função auxiliar para converter data DD/MM/YYYY para Objeto Date
         function parseDate(str) {
             const parts = str.split('/');
             return new Date(parts[2], parts[1] - 1, parts[0]);
         }
 
-        // Normalização dos Dados
         const salesData = rawPdfData.map(item => ({
             dateObj: parseDate(item.date),
             dateStr: item.date,
             region: item.region.trim(),
             seller: item.seller.trim(),
-            // Correção: NÃO remover aspas duplas para manter a designação de polegadas (ex: 15")
             product: item.product ? item.product.trim() : "Indefinido",
             units: parseInt(item.units),
             unitPrice: parseCurrency(item.price),
             total: parseCurrency(item.total)
         })).sort((a, b) => a.dateObj - b.dateObj);
 
-        // Variáveis Globais de Gráfico
-        let chartTimeline, chartRegion, chartSellers, chartProducts;
-
-        // Configuração de Cores
+        let chartTimeline, chartRegion;
+        
         const colors = {
             slate: '#64748B',
-            dark: '#0F172A',
-            teal: '#0EA5A4',
             blue: '#3B82F6',
+            teal: '#0EA5A4',
             amber: '#F59E0B',
-            tealTransparent: 'rgba(14, 165, 164, 0.7)',
-            blueTransparent: 'rgba(59, 130, 246, 0.7)',
-            amberTransparent: 'rgba(245, 158, 11, 0.7)',
-            mixed: [
-                'rgba(59, 130, 246, 0.8)',
-                'rgba(14, 165, 164, 0.8)',
-                'rgba(245, 158, 11, 0.8)',
-                'rgba(99, 102, 241, 0.8)', // Indigo
-                'rgba(236, 72, 153, 0.8)'  // Pink
-            ]
+            mixed: ['#3B82F6', '#0EA5A4', '#F59E0B', '#6366F1', '#EC4899', '#10B981'] // Hex codes for SVG
         };
-
-        // --- 2. LÓGICA DE INICIALIZAÇÃO ---
 
         function init() {
             populateFilters();
@@ -244,75 +410,278 @@
         function populateFilters() {
             const regions = [...new Set(salesData.map(d => d.region))].sort();
             const sellers = [...new Set(salesData.map(d => d.seller))].sort();
-
             const regionSelect = document.getElementById('filterRegion');
-            regions.forEach(r => {
-                const opt = document.createElement('option');
-                opt.value = r;
-                opt.innerText = r;
-                regionSelect.appendChild(opt);
-            });
-
+            regions.forEach(r => regionSelect.add(new Option(r, r)));
             const sellerSelect = document.getElementById('filterSeller');
-            sellers.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s;
-                opt.innerText = s;
-                sellerSelect.appendChild(opt);
-            });
+            sellers.forEach(s => sellerSelect.add(new Option(s, s)));
         }
 
         function resetFilters() {
             document.getElementById('filterRegion').value = 'all';
             document.getElementById('filterSeller').value = 'all';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            document.getElementById('filterCurrency').value = 'EUR';
+            currentCurrency = 'EUR';
+            simulationPercentage = 0;
+            updateSimUI();
             updateDashboard();
         }
 
-        // --- 3. LÓGICA DE ATUALIZAÇÃO E FILTRAGEM ---
+        function updateCurrency() {
+            currentCurrency = document.getElementById('filterCurrency').value;
+            updateDashboard();
+        }
+
+        function updateSimulation(delta) {
+            simulationPercentage += delta;
+            updateSimUI();
+            updateDashboard(); 
+        }
+
+        function updateSimUI() {
+            const el = document.getElementById('simValue');
+            el.innerText = (simulationPercentage > 0 ? '+' : '') + simulationPercentage + '%';
+            el.className = `text-3xl font-bold transition-all duration-300 ${simulationPercentage > 0 ? 'text-green-600' : (simulationPercentage < 0 ? 'text-red-500' : 'text-blue-600')}`;
+            const indicator = document.getElementById('simIndicator');
+            if(simulationPercentage !== 0) {
+                indicator.style.display = 'block';
+                indicator.innerText = `Simulando: ${simulationPercentage > 0 ? '+' : ''}${simulationPercentage}%`;
+            } else {
+                indicator.style.display = 'none';
+            }
+        }
 
         function getFilteredData() {
             const regionVal = document.getElementById('filterRegion').value;
             const sellerVal = document.getElementById('filterSeller').value;
+            const startDateVal = document.getElementById('filterStartDate').value;
+            const endDateVal = document.getElementById('filterEndDate').value;
 
             return salesData.filter(item => {
                 const matchRegion = regionVal === 'all' || item.region === regionVal;
                 const matchSeller = sellerVal === 'all' || item.seller === sellerVal;
-                return matchRegion && matchSeller;
+                let matchDate = true;
+                if (startDateVal) {
+                    const sParts = startDateVal.split('-');
+                    matchDate = matchDate && (item.dateObj >= new Date(sParts[0], sParts[1] - 1, sParts[2]));
+                }
+                if (endDateVal) {
+                    const eParts = endDateVal.split('-');
+                    matchDate = matchDate && (item.dateObj <= new Date(eParts[0], eParts[1] - 1, eParts[2]));
+                }
+                return matchRegion && matchSeller && matchDate;
             });
+        }
+
+        function convert(eurValue) {
+            return eurValue * currencyRates[currentCurrency];
+        }
+
+        function formatMoney(value) {
+            const locale = currentCurrency === 'EUR' ? 'pt-PT' : 'pt-BR';
+            return new Intl.NumberFormat(locale, { style: 'currency', currency: currentCurrency }).format(value);
         }
 
         function updateDashboard() {
             const currentData = getFilteredData();
             updateKPIs(currentData);
             renderCharts(currentData);
-        }
+            renderHorizontalSellers(currentData);
+            
+            // --- PREPARE DATA FOR CUSTOM DONUT ---
+            const productMap = {};
+            currentData.forEach(item => productMap[item.product] = (productMap[item.product] || 0) + item.total);
+            
+            // Create Array format expected by Donut Renderer
+            // { value, color, label }
+            const donutData = Object.keys(productMap).map((key, index) => ({
+                label: key,
+                value: convert(productMap[key]), // Convert value to selected currency
+                color: colors.mixed[index % colors.mixed.length]
+            })).sort((a, b) => b.value - a.value);
 
-        function formatCurrency(value) {
-            return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
+            renderCustomDonut(donutData);
         }
 
         function updateKPIs(data) {
-            const totalSales = data.reduce((acc, item) => acc + item.total, 0);
+            const totalSalesEur = data.reduce((acc, item) => acc + item.total, 0);
             const totalUnits = data.reduce((acc, item) => acc + item.units, 0);
-            const avgTicket = totalUnits > 0 ? (totalSales / totalUnits) : 0;
+            const avgTicketEur = totalUnits > 0 ? (totalSalesEur / totalUnits) : 0;
 
-            document.getElementById('kpiTotalSales').innerText = formatCurrency(totalSales);
+            document.getElementById('kpiTotalSales').innerText = formatMoney(convert(totalSalesEur));
             document.getElementById('kpiTotalUnits').innerText = totalUnits;
-            document.getElementById('kpiAvgTicket').innerText = formatCurrency(avgTicket);
+            document.getElementById('kpiAvgTicket').innerText = formatMoney(convert(avgTicketEur));
+            
+            const productMap = {};
+            data.forEach(d => productMap[d.product] = (productMap[d.product] || 0) + d.total);
+            const bestProduct = Object.entries(productMap).sort((a,b) => b[1] - a[1])[0];
+            document.getElementById('bestSellingProduct').innerText = bestProduct ? bestProduct[0] : "-";
         }
 
-        // --- 4. RENDERIZAÇÃO DE GRÁFICOS ---
+        function renderHorizontalSellers(data) {
+            const container = document.getElementById('sellersContainer');
+            container.innerHTML = '';
+            const sellerMap = {};
+            data.forEach(item => sellerMap[item.seller] = (sellerMap[item.seller] || 0) + item.total);
+            const sortedSellers = Object.entries(sellerMap).sort((a,b) => b[1] - a[1]).slice(0, 3);
+
+            if (sortedSellers.length === 0) {
+                container.innerHTML = '<p class="text-slate-400 col-span-3 text-center">Sem dados</p>';
+                return;
+            }
+
+            const medals = ['🥇', '🥈', '🥉'];
+            const styles = [
+                "border-teal-400 bg-teal-50 scale-105 z-10", 
+                "border-white/50 bg-white/60", 
+                "border-white/50 bg-white/60"
+            ];
+
+            sortedSellers.forEach((item, i) => {
+                const isFirst = i === 0;
+                const displayTotal = formatMoney(convert(item[1]));
+                const html = `
+                    <div class="display-card flex flex-col justify-between h-28 shadow-md ${styles[i]}">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xl">${medals[i]}</span>
+                            ${isFirst ? '<i data-lucide="crown" class="size-4 text-amber-500"></i>' : ''}
+                        </div>
+                        <div class="mt-1">
+                            <p class="text-xs font-bold text-slate-800 truncate" title="${item[0]}">${item[0]}</p>
+                            <p class="text-sm font-bold text-slate-600 truncate">${displayTotal}</p>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+            lucide.createIcons();
+        }
+
+        // --- CUSTOM SVG DONUT CHART RENDERER ---
+        function renderCustomDonut(data) {
+            const container = document.getElementById('customDonutContainer');
+            container.innerHTML = ''; // Clear previous chart
+
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-slate-400">Sem dados</p>';
+                return;
+            }
+
+            // Config
+            const size = 260;
+            const strokeWidth = 24;
+            const radius = (size - strokeWidth) / 2;
+            const circumference = 2 * Math.PI * radius;
+            const totalValue = data.reduce((acc, curr) => acc + curr.value, 0);
+            const animationDuration = 1000; // ms
+
+            // SVG Element
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", size);
+            svg.setAttribute("height", size);
+            svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+            svg.classList.add("overflow-visible", "-rotate-90"); // Rotate to start at 12 o'clock
+
+            // Base Ring
+            const baseCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            baseCircle.setAttribute("cx", size / 2);
+            baseCircle.setAttribute("cy", size / 2);
+            baseCircle.setAttribute("r", radius);
+            baseCircle.setAttribute("fill", "transparent");
+            baseCircle.setAttribute("stroke", "#e2e8f0"); // slate-200
+            baseCircle.setAttribute("stroke-width", strokeWidth);
+            svg.appendChild(baseCircle);
+
+            let cumulativePercent = 0;
+
+            // Create Segments
+            data.forEach((segment, index) => {
+                if(segment.value === 0) return;
+
+                const percent = segment.value / totalValue;
+                const dashArray = `${percent * circumference} ${circumference}`;
+                const dashOffset = -(cumulativePercent * circumference);
+
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", size / 2);
+                circle.setAttribute("cy", size / 2);
+                circle.setAttribute("r", radius);
+                circle.setAttribute("fill", "transparent");
+                circle.setAttribute("stroke", segment.color);
+                circle.setAttribute("stroke-width", strokeWidth);
+                circle.setAttribute("stroke-dasharray", dashArray);
+                circle.setAttribute("stroke-dashoffset", circumference); // Start hidden (offset = full length)
+                circle.setAttribute("stroke-linecap", "round");
+                circle.classList.add("donut-segment");
+
+                // Interactivity
+                circle.addEventListener('mouseenter', () => {
+                    // Scale Effect logic handled by CSS hover, but we need to update text
+                    updateCenterText(segment.label, segment.value);
+                    circle.style.filter = `drop-shadow(0px 0px 8px ${segment.color})`;
+                    circle.style.transform = "scale(1.05)";
+                });
+
+                circle.addEventListener('mouseleave', () => {
+                    resetCenterText();
+                    circle.style.filter = "none";
+                    circle.style.transform = "scale(1)";
+                });
+
+                svg.appendChild(circle);
+
+                // Animate Entry (Use timeout to trigger CSS transition)
+                setTimeout(() => {
+                    circle.setAttribute("stroke-dashoffset", dashOffset);
+                }, 50 + (index * 100)); // Stagger animation
+
+                cumulativePercent += percent;
+            });
+
+            container.appendChild(svg);
+
+            // --- Center Content ---
+            const centerDiv = document.createElement("div");
+            centerDiv.className = "absolute flex flex-col items-center justify-center pointer-events-none transition-all duration-300";
+            centerDiv.style.width = `${size - strokeWidth * 2.5}px`;
+            centerDiv.style.height = `${size - strokeWidth * 2.5}px`;
+            
+            const titleEl = document.createElement("p");
+            titleEl.className = "text-slate-400 text-xs font-semibold uppercase tracking-wide mb-1";
+            titleEl.innerText = "Total";
+            
+            const valueEl = document.createElement("p");
+            valueEl.className = "text-2xl font-bold text-slate-800";
+            valueEl.innerText = formatMoney(totalValue);
+
+            centerDiv.appendChild(titleEl);
+            centerDiv.appendChild(valueEl);
+            container.appendChild(centerDiv);
+
+            // Helper to update text on hover
+            function updateCenterText(label, value) {
+                titleEl.innerText = label;
+                valueEl.innerText = formatMoney(value);
+                valueEl.style.color = data.find(d => d.label === label).color;
+            }
+
+            function resetCenterText() {
+                titleEl.innerText = "Total";
+                valueEl.innerText = formatMoney(totalValue);
+                valueEl.style.color = "#1e293b"; // slate-800
+            }
+        }
 
         function renderCharts(data) {
             if (chartTimeline) chartTimeline.destroy();
             if (chartRegion) chartRegion.destroy();
-            if (chartSellers) chartSellers.destroy();
-            if (chartProducts) chartProducts.destroy();
+            // chartProducts is no longer Chart.js
 
             Chart.defaults.font.family = "'Inter', sans-serif";
             Chart.defaults.color = colors.slate;
 
-            // 1. Timeline
+            // --- Timeline Chart ---
             const dateMap = {};
             data.forEach(item => {
                 if (!dateMap[item.dateStr]) dateMap[item.dateStr] = 0;
@@ -320,49 +689,63 @@
             });
             const sortedDates = Object.keys(dateMap).sort((a, b) => parseDate(a) - parseDate(b));
             
+            const realData = sortedDates.map(d => convert(dateMap[d]));
+            const projectedData = realData.map(val => val * (1 + simulationPercentage / 100));
+
+            const datasets = [{
+                label: 'Receita Real',
+                data: realData,
+                borderColor: colors.blue,
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4,
+                order: 2
+            }];
+
+            if (simulationPercentage !== 0) {
+                datasets.push({
+                    label: `Simulação (${simulationPercentage > 0 ? '+' : ''}${simulationPercentage}%)`,
+                    data: projectedData,
+                    borderColor: simulationPercentage > 0 ? colors.teal : '#EF4444',
+                    borderDash: [5, 5],
+                    backgroundColor: 'transparent',
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    order: 1
+                });
+            }
+            
             chartTimeline = new Chart(document.getElementById('chartTimeline'), {
                 type: 'line',
-                data: {
-                    labels: sortedDates,
-                    datasets: [{
-                        label: 'Receita (€)',
-                        data: sortedDates.map(d => dateMap[d]),
-                        borderColor: colors.blue,
-                        backgroundColor: colors.blueTransparent,
-                        tension: 0.3,
-                        fill: true,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    }]
-                },
+                data: { labels: sortedDates, datasets: datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => formatCurrency(ctx.raw) } }
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { 
+                        legend: { display: simulationPercentage !== 0 },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatMoney(ctx.raw)}` } }
                     },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { callback: (val) => '€' + val } }
-                    }
+                    scales: { y: { beginAtZero: true, ticks: { callback: (val) => formatMoney(val) } } }
                 }
             });
 
-            // 2. Região
+            // --- Region Chart ---
             const regionMap = {};
-            data.forEach(item => {
-                if (!regionMap[item.region]) regionMap[item.region] = 0;
-                regionMap[item.region] += item.total;
-            });
+            data.forEach(item => regionMap[item.region] = (regionMap[item.region] || 0) + item.total);
+            const regionLabels = Object.keys(regionMap);
+            const regionValues = Object.values(regionMap).map(val => convert(val));
 
             chartRegion = new Chart(document.getElementById('chartRegion'), {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(regionMap),
+                    labels: regionLabels,
                     datasets: [{
                         label: 'Faturação',
-                        data: Object.values(regionMap),
-                        backgroundColor: colors.tealTransparent,
+                        data: regionValues,
+                        backgroundColor: colors.teal + 'AA',
                         borderColor: colors.teal,
                         borderWidth: 1,
                         borderRadius: 4
@@ -371,102 +754,28 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
+                    plugins: { 
                         legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => formatCurrency(ctx.raw) } }
-                    }
-                }
-            });
-
-            // 3. Vendedores
-            const sellerMap = {};
-            data.forEach(item => {
-                if (!sellerMap[item.seller]) sellerMap[item.seller] = 0;
-                sellerMap[item.seller] += item.total;
-            });
-            const sortedSellers = Object.entries(sellerMap).sort((a, b) => b[1] - a[1]);
-
-            chartSellers = new Chart(document.getElementById('chartSellers'), {
-                type: 'bar',
-                indexAxis: 'y',
-                data: {
-                    labels: sortedSellers.map(s => s[0]),
-                    datasets: [{
-                        label: 'Total Vendido',
-                        data: sortedSellers.map(s => s[1]),
-                        backgroundColor: colors.amberTransparent,
-                        borderColor: colors.amber,
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => formatCurrency(ctx.raw) } }
-                    }
-                }
-            });
-
-            // 4. Produtos
-            const productMap = {};
-            data.forEach(item => {
-                if (!productMap[item.product]) productMap[item.product] = 0;
-                productMap[item.product] += item.total;
-            });
-
-            chartProducts = new Chart(document.getElementById('chartProducts'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(productMap),
-                    datasets: [{
-                        data: Object.values(productMap),
-                        backgroundColor: colors.mixed,
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 12 } },
-                        tooltip: { callbacks: { label: (ctx) => {
-                            let sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                            let percentage = (ctx.raw / sum * 100).toFixed(1) + "%";
-                            return `${ctx.label}: ${formatCurrency(ctx.raw)} (${percentage})`;
-                        }}}
-                    }
+                        tooltip: { callbacks: { label: (ctx) => formatMoney(ctx.raw) } }
+                    },
+                    scales: { y: { ticks: { callback: (val) => formatMoney(val) } } }
                 }
             });
         }
 
-        // --- 5. EXPORTAÇÃO CSV ---
         function exportCSV() {
             const data = getFilteredData();
-            if (data.length === 0) {
-                alert("Não há dados para exportar.");
-                return;
-            }
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Data,Região,Vendedor,Produto,Unidades,Preço Unit.,Total\n";
-            data.forEach(row => {
-                const line = [
-                    row.dateStr,
-                    row.region,
-                    row.seller,
-                    row.product,
-                    row.units,
-                    row.unitPrice.toFixed(2).replace('.',','),
-                    row.total.toFixed(2).replace('.',',')
-                ].join(",");
-                csvContent += line + "\n";
+            if (!data.length) return alert("Sem dados.");
+            
+            let csv = `Data,Região,Vendedor,Produto,Unidades,Preço Original(EUR),Total(${currentCurrency})\n`;
+            data.forEach(r => {
+                const totalConverted = convert(r.total).toFixed(2).replace('.',',');
+                csv += `${r.dateStr},${r.region},${r.seller},${r.product},${r.units},${r.unitPrice},${totalConverted}\n`;
             });
-            const encodedUri = encodeURI(csvContent);
+            
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "vendas_dashboard.csv");
+            link.href = encodeURI("data:text/csv;charset=utf-8," + csv);
+            link.download = `vendas_Q1_2025_${currentCurrency}.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
