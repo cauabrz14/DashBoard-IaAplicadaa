@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Vendas - Q1 2025</title>
+    
+    <!-- Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F1F5F9; /* Slate-100 */
+            color: #0F172A; /* Slate-900 */
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white p-6 shadow-lg">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">Dashboard de Vendas</h1>
+                <p class="text-slate-400 text-sm mt-1">Análise de Performance Q1 2025</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex gap-3">
+                <button onclick="exportCSV()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2">
+                    <span>📥</span> Exportar CSV
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Controls & Filters -->
+    <section class="container mx-auto mt-8 px-4">
+        <div class="bg-white p-4 rounded-lg shadow-sm flex flex-col md:flex-row gap-4 items-end md:items-center justify-between">
+            <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                <!-- Filtro Região -->
+                <div class="flex flex-col">
+                    <label for="filterRegion" class="text-xs font-bold text-slate-500 uppercase mb-1">Região</label>
+                    <select id="filterRegion" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="all">Todas as Regiões</option>
+                        <!-- Opções preenchidas via JS -->
+                    </select>
+                </div>
+                <!-- Filtro Vendedor -->
+                <div class="flex flex-col">
+                    <label for="filterSeller" class="text-xs font-bold text-slate-500 uppercase mb-1">Vendedor</label>
+                    <select id="filterSeller" onchange="updateDashboard()" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="all">Todos os Vendedores</option>
+                        <!-- Opções preenchidas via JS -->
+                    </select>
+                </div>
+            </div>
+            
+            <button onclick="resetFilters()" class="text-sm text-blue-600 hover:text-blue-800 font-medium underline">
+                Limpar Filtros
+            </button>
+        </div>
+    </section>
+
+    <!-- KPIs -->
+    <section class="container mx-auto mt-6 px-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- KPI 1 -->
+            <div class="card border-l-4 border-teal-500">
+                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wider">Vendas Totais</h3>
+                <div class="mt-2 flex items-baseline">
+                    <span class="text-3xl font-bold text-slate-900" id="kpiTotalSales">€0,00</span>
+                </div>
+            </div>
+            <!-- KPI 2 -->
+            <div class="card border-l-4 border-blue-500">
+                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wider">Unidades Vendidas</h3>
+                <div class="mt-2 flex items-baseline">
+                    <span class="text-3xl font-bold text-slate-900" id="kpiTotalUnits">0</span>
+                </div>
+            </div>
+            <!-- KPI 3 -->
+            <div class="card border-l-4 border-amber-500">
+                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wider">Ticket Médio</h3>
+                <div class="mt-2 flex items-baseline">
+                    <span class="text-3xl font-bold text-slate-900" id="kpiAvgTicket">€0,00</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Charts Grid -->
+    <section class="container mx-auto mt-6 px-4 mb-12">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Chart 1: Evolução Temporal -->
+            <div class="card lg:col-span-2">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Evolução de Vendas (Q1)</h3>
+                <div class="chart-container">
+                    <canvas id="chartTimeline"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Região -->
+            <div class="card">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Vendas por Região</h3>
+                <div class="chart-container">
+                    <canvas id="chartRegion"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 3: Top Vendedores -->
+            <div class="card">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Ranking Vendedores</h3>
+                <div class="chart-container">
+                    <canvas id="chartSellers"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 4: Produtos -->
+            <div class="card lg:col-span-2 flex flex-col md:flex-row items-center">
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Performance por Produto</h3>
+                    <p class="text-sm text-slate-500 mb-4">Distribuição da receita gerada por categoria de produto.</p>
+                </div>
+                <div class="w-full md:w-1/2 h-[300px] flex justify-center">
+                    <canvas id="chartProducts"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-sm mt-auto">
+        <p>Gerado automaticamente com base no Relatório de Vendas Q1 2025.</p>
+    </footer>
+
+    <!-- JS Logic -->
+    <script>
+        // --- 1. EXTRAÇÃO E PARSING DE DADOS ---
+        // Dados fidedignos extraídos da tabela do relatório.pdf e corrigidos conforme instruções.
+        const rawPdfData = [
+            { date: "02/01/2025", region: "Norte", seller: "João Silva", product: "Portátil Pro 15\"", units: "2", price: "1.200,00", total: "2.400,00" },
+            { date: "05/01/2025", region: "Lisboa", seller: "Ana Gomes", product: "Monitor 27\"", units: "5", price: "300,00", total: "1.500,00" },
+            { date: "10/01/2025", region: "Algarve", seller: "Pedro Costa", product: "Teclado Mecânico", units: "10", price: "150,00", total: "1.500,00" },
+            { date: "15/01/2025", region: "Norte", seller: "João Silva", product: "Rato Ergonómico", units: "8", price: "80,00", total: "640,00" },
+            { date: "22/01/2025", region: "Centro", seller: "Maria Neves", product: "Portátil Pro 13\"", units: "3", price: "1.000,00", total: "3.000,00" },
+            { date: "05/02/2025", region: "Lisboa", seller: "Ana Gomes", product: "Portátil Pro 15\"", units: "1", price: "1.200,00", total: "1.200,00" },
+            { date: "12/02/2025", region: "Algarve", seller: "Pedro Costa", product: "Monitor 24", units: "4", price: "200,00", total: "800,00" },
+            { date: "18/02/2025", region: "Centro", seller: "Maria Neves", product: "Monitor 24\" Docking Station", units: "6", price: "180,00", total: "1.080,00" },
+            { date: "03/03/2025", region: "Norte", seller: "João Silva", product: "Headset Wireless", units: "7", price: "120,00", total: "840,00" },
+            { date: "15/03/2025", region: "Lisboa", seller: "Ana Gomes", product: "Portátil Pro 13\"", units: "2", price: "1.000,00", total: "2.000,00" }
+        ];
+
+        // Função auxiliar para converter moeda europeia (1.000,00) para float JS (1000.00)
+        function parseCurrency(str) {
+            if (!str) return 0;
+            const cleanStr = str.replace(/\./g, '').replace(',', '.');
+            return parseFloat(cleanStr);
+        }
+
+        // Função auxiliar para converter data DD/MM/YYYY para Objeto Date
+        function parseDate(str) {
+            const parts = str.split('/');
+            return new Date(parts[2], parts[1] - 1, parts[0]);
+        }
+
+        // Normalização dos Dados
+        const salesData = rawPdfData.map(item => ({
+            dateObj: parseDate(item.date),
+            dateStr: item.date,
+            region: item.region.trim(),
+            seller: item.seller.trim(),
+            // Correção: NÃO remover aspas duplas para manter a designação de polegadas (ex: 15")
+            product: item.product ? item.product.trim() : "Indefinido",
+            units: parseInt(item.units),
+            unitPrice: parseCurrency(item.price),
+            total: parseCurrency(item.total)
+        })).sort((a, b) => a.dateObj - b.dateObj);
+
+        // Variáveis Globais de Gráfico
+        let chartTimeline, chartRegion, chartSellers, chartProducts;
+
+        // Configuração de Cores
+        const colors = {
+            slate: '#64748B',
+            dark: '#0F172A',
+            teal: '#0EA5A4',
+            blue: '#3B82F6',
+            amber: '#F59E0B',
+            tealTransparent: 'rgba(14, 165, 164, 0.7)',
+            blueTransparent: 'rgba(59, 130, 246, 0.7)',
+            amberTransparent: 'rgba(245, 158, 11, 0.7)',
+            mixed: [
+                'rgba(59, 130, 246, 0.8)',
+                'rgba(14, 165, 164, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(99, 102, 241, 0.8)', // Indigo
+                'rgba(236, 72, 153, 0.8)'  // Pink
+            ]
+        };
+
+        // --- 2. LÓGICA DE INICIALIZAÇÃO ---
+
+        function init() {
+            populateFilters();
+            updateDashboard();
+        }
+
+        function populateFilters() {
+            const regions = [...new Set(salesData.map(d => d.region))].sort();
+            const sellers = [...new Set(salesData.map(d => d.seller))].sort();
+
+            const regionSelect = document.getElementById('filterRegion');
+            regions.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.innerText = r;
+                regionSelect.appendChild(opt);
+            });
+
+            const sellerSelect = document.getElementById('filterSeller');
+            sellers.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.innerText = s;
+                sellerSelect.appendChild(opt);
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('filterRegion').value = 'all';
+            document.getElementById('filterSeller').value = 'all';
+            updateDashboard();
+        }
+
+        // --- 3. LÓGICA DE ATUALIZAÇÃO E FILTRAGEM ---
+
+        function getFilteredData() {
+            const regionVal = document.getElementById('filterRegion').value;
+            const sellerVal = document.getElementById('filterSeller').value;
+
+            return salesData.filter(item => {
+                const matchRegion = regionVal === 'all' || item.region === regionVal;
+                const matchSeller = sellerVal === 'all' || item.seller === sellerVal;
+                return matchRegion && matchSeller;
+            });
+        }
+
+        function updateDashboard() {
+            const currentData = getFilteredData();
+            updateKPIs(currentData);
+            renderCharts(currentData);
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
+        }
+
+        function updateKPIs(data) {
+            const totalSales = data.reduce((acc, item) => acc + item.total, 0);
+            const totalUnits = data.reduce((acc, item) => acc + item.units, 0);
+            const avgTicket = totalUnits > 0 ? (totalSales / totalUnits) : 0;
+
+            document.getElementById('kpiTotalSales').innerText = formatCurrency(totalSales);
+            document.getElementById('kpiTotalUnits').innerText = totalUnits;
+            document.getElementById('kpiAvgTicket').innerText = formatCurrency(avgTicket);
+        }
+
+        // --- 4. RENDERIZAÇÃO DE GRÁFICOS ---
+
+        function renderCharts(data) {
+            if (chartTimeline) chartTimeline.destroy();
+            if (chartRegion) chartRegion.destroy();
+            if (chartSellers) chartSellers.destroy();
+            if (chartProducts) chartProducts.destroy();
+
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = colors.slate;
+
+            // 1. Timeline
+            const dateMap = {};
+            data.forEach(item => {
+                if (!dateMap[item.dateStr]) dateMap[item.dateStr] = 0;
+                dateMap[item.dateStr] += item.total;
+            });
+            const sortedDates = Object.keys(dateMap).sort((a, b) => parseDate(a) - parseDate(b));
+            
+            chartTimeline = new Chart(document.getElementById('chartTimeline'), {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: [{
+                        label: 'Receita (€)',
+                        data: sortedDates.map(d => dateMap[d]),
+                        borderColor: colors.blue,
+                        backgroundColor: colors.blueTransparent,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => formatCurrency(ctx.raw) } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: (val) => '€' + val } }
+                    }
+                }
+            });
+
+            // 2. Região
+            const regionMap = {};
+            data.forEach(item => {
+                if (!regionMap[item.region]) regionMap[item.region] = 0;
+                regionMap[item.region] += item.total;
+            });
+
+            chartRegion = new Chart(document.getElementById('chartRegion'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(regionMap),
+                    datasets: [{
+                        label: 'Faturação',
+                        data: Object.values(regionMap),
+                        backgroundColor: colors.tealTransparent,
+                        borderColor: colors.teal,
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => formatCurrency(ctx.raw) } }
+                    }
+                }
+            });
+
+            // 3. Vendedores
+            const sellerMap = {};
+            data.forEach(item => {
+                if (!sellerMap[item.seller]) sellerMap[item.seller] = 0;
+                sellerMap[item.seller] += item.total;
+            });
+            const sortedSellers = Object.entries(sellerMap).sort((a, b) => b[1] - a[1]);
+
+            chartSellers = new Chart(document.getElementById('chartSellers'), {
+                type: 'bar',
+                indexAxis: 'y',
+                data: {
+                    labels: sortedSellers.map(s => s[0]),
+                    datasets: [{
+                        label: 'Total Vendido',
+                        data: sortedSellers.map(s => s[1]),
+                        backgroundColor: colors.amberTransparent,
+                        borderColor: colors.amber,
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => formatCurrency(ctx.raw) } }
+                    }
+                }
+            });
+
+            // 4. Produtos
+            const productMap = {};
+            data.forEach(item => {
+                if (!productMap[item.product]) productMap[item.product] = 0;
+                productMap[item.product] += item.total;
+            });
+
+            chartProducts = new Chart(document.getElementById('chartProducts'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(productMap),
+                    datasets: [{
+                        data: Object.values(productMap),
+                        backgroundColor: colors.mixed,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12 } },
+                        tooltip: { callbacks: { label: (ctx) => {
+                            let sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = (ctx.raw / sum * 100).toFixed(1) + "%";
+                            return `${ctx.label}: ${formatCurrency(ctx.raw)} (${percentage})`;
+                        }}}
+                    }
+                }
+            });
+        }
+
+        // --- 5. EXPORTAÇÃO CSV ---
+        function exportCSV() {
+            const data = getFilteredData();
+            if (data.length === 0) {
+                alert("Não há dados para exportar.");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Data,Região,Vendedor,Produto,Unidades,Preço Unit.,Total\n";
+            data.forEach(row => {
+                const line = [
+                    row.dateStr,
+                    row.region,
+                    row.seller,
+                    row.product,
+                    row.units,
+                    row.unitPrice.toFixed(2).replace('.',','),
+                    row.total.toFixed(2).replace('.',',')
+                ].join(",");
+                csvContent += line + "\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "vendas_dashboard.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
