@@ -139,6 +139,7 @@
         /* --- Custom Donut Chart CSS --- */
         .donut-segment {
             transform-origin: center;
+            transform-box: view-box; 
             transition: filter 0.3s ease-out, transform 0.3s ease-out, stroke-dashoffset 1s ease-out, opacity 0.5s ease-out;
             cursor: pointer;
         }
@@ -149,6 +150,19 @@
             pointer-events: none;
             transition: opacity 0.2s ease;
         }
+        
+        /* Badge de Variação */
+        .trend-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.1rem 0.4rem;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .trend-positive { background-color: #dcfce7; color: #166534; } /* green-100 / green-800 */
+        .trend-negative { background-color: #fee2e2; color: #991b1b; } /* red-100 / red-800 */
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -266,11 +280,15 @@
                 
                 <!-- Timeline Chart (Takes 2 columns) -->
                 <div class="card lg:col-span-2">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-slate-800">Evolução de Vendas (Real vs Simulado)</h3>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-bold text-slate-800">Evolução de Vendas</h3>
                         <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200" id="simIndicator" style="display:none">
                             Simulação Ativa
                         </span>
+                    </div>
+                    <!-- Monthly Growth Stats Container -->
+                    <div id="monthlyGrowthContainer" class="flex gap-2 mb-4 flex-wrap">
+                        <!-- Injected by JS -->
                     </div>
                     <div class="chart-container">
                         <canvas id="chartTimeline"></canvas>
@@ -327,7 +345,7 @@
                     <div class="w-full md:w-1/2 p-4">
                         <h3 class="text-lg font-bold text-slate-800 mb-4">Performance por Produto</h3>
                         <div class="space-y-4">
-                            <p class="text-sm text-slate-500">Distribuição de receita entre categorias. Passe o rato no gráfico para ver detalhes.</p>
+                            <p class="text-sm text-slate-500">Distribuição de receita entre categorias.</p>
                             <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
                                 <span class="text-xs text-slate-400 uppercase">Produto Mais Vendido</span>
                                 <p class="font-bold text-slate-800 text-lg" id="bestSellingProduct">-</p>
@@ -355,6 +373,7 @@
         // --- GLOBAL STATE ---
         let simulationPercentage = 0;
         let currentCurrency = 'EUR'; 
+        let hoverTimeout; 
         
         const currencyRates = { 'EUR': 1, 'BRL': 6.15 };
 
@@ -384,6 +403,7 @@
         const salesData = rawPdfData.map(item => ({
             dateObj: parseDate(item.date),
             dateStr: item.date,
+            month: item.date.substring(3, 10), // MM/YYYY para agrupar
             region: item.region.trim(),
             seller: item.seller.trim(),
             product: item.product ? item.product.trim() : "Indefinido",
@@ -399,7 +419,7 @@
             blue: '#3B82F6',
             teal: '#0EA5A4',
             amber: '#F59E0B',
-            mixed: ['#3B82F6', '#0EA5A4', '#F59E0B', '#6366F1', '#EC4899', '#10B981'] // Hex codes for SVG
+            mixed: ['#3B82F6', '#0EA5A4', '#F59E0B', '#6366F1', '#EC4899', '#10B981']
         };
 
         function init() {
@@ -485,19 +505,18 @@
 
         function updateDashboard() {
             const currentData = getFilteredData();
+            const totalRevenue = currentData.reduce((acc, item) => acc + item.total, 0);
+            
             updateKPIs(currentData);
             renderCharts(currentData);
-            renderHorizontalSellers(currentData);
+            renderHorizontalSellers(currentData, totalRevenue);
             
-            // --- PREPARE DATA FOR CUSTOM DONUT ---
             const productMap = {};
             currentData.forEach(item => productMap[item.product] = (productMap[item.product] || 0) + item.total);
             
-            // Create Array format expected by Donut Renderer
-            // { value, color, label }
             const donutData = Object.keys(productMap).map((key, index) => ({
                 label: key,
-                value: convert(productMap[key]), // Convert value to selected currency
+                value: convert(productMap[key]), 
                 color: colors.mixed[index % colors.mixed.length]
             })).sort((a, b) => b.value - a.value);
 
@@ -519,7 +538,8 @@
             document.getElementById('bestSellingProduct').innerText = bestProduct ? bestProduct[0] : "-";
         }
 
-        function renderHorizontalSellers(data) {
+        // --- RENDER HORIZONTAL SELLERS COM % DO TOTAL ---
+        function renderHorizontalSellers(data, totalRevenue) {
             const container = document.getElementById('sellersContainer');
             container.innerHTML = '';
             const sellerMap = {};
@@ -541,10 +561,15 @@
             sortedSellers.forEach((item, i) => {
                 const isFirst = i === 0;
                 const displayTotal = formatMoney(convert(item[1]));
+                const percentage = totalRevenue > 0 ? ((item[1] / totalRevenue) * 100).toFixed(1) : 0;
+                
                 const html = `
                     <div class="display-card flex flex-col justify-between h-28 shadow-md ${styles[i]}">
                         <div class="flex justify-between items-start">
-                            <span class="text-xl">${medals[i]}</span>
+                            <div class="flex items-center gap-1">
+                                <span class="text-xl">${medals[i]}</span>
+                                <span class="text-[10px] bg-slate-200 text-slate-600 px-1 rounded font-bold">${percentage}% do Total</span>
+                            </div>
                             ${isFirst ? '<i data-lucide="crown" class="size-4 text-amber-500"></i>' : ''}
                         </div>
                         <div class="mt-1">
@@ -558,44 +583,38 @@
             lucide.createIcons();
         }
 
-        // --- CUSTOM SVG DONUT CHART RENDERER ---
         function renderCustomDonut(data) {
             const container = document.getElementById('customDonutContainer');
-            container.innerHTML = ''; // Clear previous chart
+            container.innerHTML = ''; 
 
             if (data.length === 0) {
                 container.innerHTML = '<p class="text-slate-400">Sem dados</p>';
                 return;
             }
 
-            // Config
             const size = 260;
             const strokeWidth = 24;
             const radius = (size - strokeWidth) / 2;
             const circumference = 2 * Math.PI * radius;
             const totalValue = data.reduce((acc, curr) => acc + curr.value, 0);
-            const animationDuration = 1000; // ms
 
-            // SVG Element
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("width", size);
             svg.setAttribute("height", size);
             svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
-            svg.classList.add("overflow-visible", "-rotate-90"); // Rotate to start at 12 o'clock
+            svg.classList.add("overflow-visible", "-rotate-90"); 
 
-            // Base Ring
             const baseCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             baseCircle.setAttribute("cx", size / 2);
             baseCircle.setAttribute("cy", size / 2);
             baseCircle.setAttribute("r", radius);
             baseCircle.setAttribute("fill", "transparent");
-            baseCircle.setAttribute("stroke", "#e2e8f0"); // slate-200
+            baseCircle.setAttribute("stroke", "#e2e8f0");
             baseCircle.setAttribute("stroke-width", strokeWidth);
             svg.appendChild(baseCircle);
 
             let cumulativePercent = 0;
 
-            // Create Segments
             data.forEach((segment, index) => {
                 if(segment.value === 0) return;
 
@@ -611,37 +630,36 @@
                 circle.setAttribute("stroke", segment.color);
                 circle.setAttribute("stroke-width", strokeWidth);
                 circle.setAttribute("stroke-dasharray", dashArray);
-                circle.setAttribute("stroke-dashoffset", circumference); // Start hidden (offset = full length)
+                circle.setAttribute("stroke-dashoffset", circumference);
                 circle.setAttribute("stroke-linecap", "round");
                 circle.classList.add("donut-segment");
 
-                // Interactivity
                 circle.addEventListener('mouseenter', () => {
-                    // Scale Effect logic handled by CSS hover, but we need to update text
+                    clearTimeout(hoverTimeout); 
                     updateCenterText(segment.label, segment.value);
                     circle.style.filter = `drop-shadow(0px 0px 8px ${segment.color})`;
                     circle.style.transform = "scale(1.05)";
                 });
 
                 circle.addEventListener('mouseleave', () => {
-                    resetCenterText();
+                    hoverTimeout = setTimeout(() => {
+                        resetCenterText();
+                    }, 50);
                     circle.style.filter = "none";
                     circle.style.transform = "scale(1)";
                 });
 
                 svg.appendChild(circle);
 
-                // Animate Entry (Use timeout to trigger CSS transition)
                 setTimeout(() => {
                     circle.setAttribute("stroke-dashoffset", dashOffset);
-                }, 50 + (index * 100)); // Stagger animation
+                }, 50 + (index * 100));
 
                 cumulativePercent += percent;
             });
 
             container.appendChild(svg);
 
-            // --- Center Content ---
             const centerDiv = document.createElement("div");
             centerDiv.className = "absolute flex flex-col items-center justify-center pointer-events-none transition-all duration-300";
             centerDiv.style.width = `${size - strokeWidth * 2.5}px`;
@@ -659,7 +677,6 @@
             centerDiv.appendChild(valueEl);
             container.appendChild(centerDiv);
 
-            // Helper to update text on hover
             function updateCenterText(label, value) {
                 titleEl.innerText = label;
                 valueEl.innerText = formatMoney(value);
@@ -669,19 +686,71 @@
             function resetCenterText() {
                 titleEl.innerText = "Total";
                 valueEl.innerText = formatMoney(totalValue);
-                valueEl.style.color = "#1e293b"; // slate-800
+                valueEl.style.color = "#1e293b"; 
             }
         }
 
+        // --- FUNÇÃO DE CÁLCULO DE CRESCIMENTO MENSAL ---
         function renderCharts(data) {
             if (chartTimeline) chartTimeline.destroy();
             if (chartRegion) chartRegion.destroy();
-            // chartProducts is no longer Chart.js
 
             Chart.defaults.font.family = "'Inter', sans-serif";
             Chart.defaults.color = colors.slate;
 
-            // --- Timeline Chart ---
+            // 1. Agrupar por Mês (usando MM/YYYY)
+            const monthMap = {};
+            const monthLabels = []; // Para manter a ordem correta
+            
+            data.forEach(item => {
+                // Criar chave ordenável (YYYY-MM) para o mapa, mas exibir MM/YYYY
+                const key = item.dateStr.split('/').reverse().slice(0, 2).join('-'); // 2025-01
+                const displayLabel = item.month; // 01/2025
+                
+                if (!monthMap[key]) {
+                    monthMap[key] = { total: 0, label: displayLabel };
+                    monthLabels.push(key);
+                }
+                monthMap[key].total += item.total;
+            });
+            
+            // Ordenar meses
+            monthLabels.sort(); // Ordena string '2025-01', '2025-02', etc.
+
+            // 2. Calcular Variação (Growth)
+            const growthContainer = document.getElementById('monthlyGrowthContainer');
+            growthContainer.innerHTML = ''; // Limpar
+            
+            // Se houver pelo menos 2 meses, calcular variações
+            if (monthLabels.length > 1) {
+                for (let i = 1; i < monthLabels.length; i++) {
+                    const prevKey = monthLabels[i-1];
+                    const currKey = monthLabels[i];
+                    
+                    const prevVal = monthMap[prevKey].total;
+                    const currVal = monthMap[currKey].total;
+                    
+                    const percentage = prevVal > 0 ? ((currVal - prevVal) / prevVal * 100) : 0;
+                    const isPositive = percentage >= 0;
+                    const trendClass = isPositive ? 'trend-positive' : 'trend-negative';
+                    const arrow = isPositive ? '↗' : '↘';
+                    
+                    // Extrair apenas o mês nome/número curto para exibir
+                    const prevMonthName = monthMap[prevKey].label.split('/')[0];
+                    const currMonthName = monthMap[currKey].label.split('/')[0];
+                    
+                    const badge = document.createElement('div');
+                    badge.className = `trend-badge ${trendClass} border border-current bg-opacity-20`;
+                    badge.innerHTML = `<span class="text-[10px] uppercase text-slate-500 mr-1 font-normal">${prevMonthName}→${currMonthName}:</span> ${arrow} ${Math.abs(percentage).toFixed(1)}%`;
+                    
+                    growthContainer.appendChild(badge);
+                }
+            } else {
+                 growthContainer.innerHTML = '<span class="text-xs text-slate-400 italic">Dados insuficientes para comparação mensal.</span>';
+            }
+
+            // --- Timeline Chart Data Prep ---
+            // Re-usando a lógica original de dias para o gráfico, mas calculando conversão
             const dateMap = {};
             data.forEach(item => {
                 if (!dateMap[item.dateStr]) dateMap[item.dateStr] = 0;
@@ -732,7 +801,7 @@
                 }
             });
 
-            // --- Region Chart ---
+            // Region Chart
             const regionMap = {};
             data.forEach(item => regionMap[item.region] = (regionMap[item.region] || 0) + item.total);
             const regionLabels = Object.keys(regionMap);
