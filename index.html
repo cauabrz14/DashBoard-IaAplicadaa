@@ -137,6 +137,11 @@
             pointer-events: none;
             transition: opacity 0.2s ease;
         }
+
+        /* --- Modal Animation --- */
+        #newSaleModal { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        #newSaleModal.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        #newSaleModal:not(.hidden) { opacity: 1; visibility: visible; pointer-events: auto; }
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -154,16 +159,21 @@
         
         <!-- Header -->
         <header class="bg-slate-900/95 backdrop-blur-md text-white p-6 shadow-lg border-b border-slate-700">
-            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
+            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-200 to-blue-400 flex items-center gap-2">
                         <i data-lucide="layout-dashboard" class="text-teal-400"></i> Dashboard de Vendas
                     </h1>
                     <p class="text-slate-300 text-sm mt-1">Análise de Performance Q1 2025 (Firebase)</p>
                 </div>
-                <div class="mt-4 md:mt-0">
-                    <button onclick="exportCSV()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 shadow-lg">
-                        <i data-lucide="download" class="size-4"></i> Exportar CSV
+                <div class="flex items-center gap-3">
+                    <!-- BOTÃO NOVA VENDA -->
+                    <button onclick="toggleModal(true)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 shadow-lg hover:shadow-indigo-500/30 border border-indigo-500/50">
+                        <i data-lucide="plus-circle" class="size-4"></i> Nova Venda
+                    </button>
+
+                    <button onclick="exportCSV()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 shadow-lg border border-teal-500/50">
+                        <i data-lucide="download" class="size-4"></i> CSV
                     </button>
                 </div>
             </div>
@@ -346,6 +356,70 @@
         </footer>
     </div>
 
+    <!-- MODAL DE NOVA VENDA (Escondido por padrão) -->
+    <div id="newSaleModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all scale-100 flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-slate-900 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="text-teal-400 size-5"></i> Registrar Nova Venda
+                </h3>
+                <button onclick="toggleModal(false)" class="text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="size-6"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form onsubmit="registerSale(event)" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Data da Venda</label>
+                        <input type="date" id="inputDate" required class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Região</label>
+                        <select id="inputRegion" required class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                            <option value="Norte">Norte</option>
+                            <option value="Centro">Centro</option>
+                            <option value="Lisboa">Lisboa</option>
+                            <option value="Algarve">Algarve</option>
+                            <option value="Ilhas">Ilhas</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Vendedor</label>
+                        <input type="text" id="inputSeller" placeholder="Ex: João Silva" required class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Produto</label>
+                        <input type="text" id="inputProduct" placeholder="Ex: Portátil" required class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Unidades</label>
+                        <input type="number" id="inputUnits" min="1" value="1" required class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Preço Unitário (€)</label>
+                        <input type="number" id="inputPrice" min="0" step="0.01" placeholder="0.00" required class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-2 border-t border-slate-100 mt-4">
+                    <button type="button" onclick="toggleModal(false)" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Cancelar</button>
+                    <button type="submit" id="btnSave" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center gap-2">
+                        <i data-lucide="save" class="size-4"></i> Salvar Venda
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- FIREBASE SDK (COMPATIBILIDADE) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -411,6 +485,8 @@
         async function init() {
             console.log("🚀 Inicializando Dashboard...");
             try {
+                // Ordem por timestamp de criação seria ideal, mas usando dados padrão ordenamos por cliente.
+                // Para produção, seria melhor .orderBy('created_at') se existisse.
                 const snapshot = await db.collection('vendas').get();
                 
                 if (snapshot.empty) {
@@ -455,6 +531,74 @@
             }
         }
 
+        // --- NOVAS FUNÇÕES: MODAL E REGISTRO ---
+        
+        function toggleModal(show) {
+            const modal = document.getElementById('newSaleModal');
+            if(show) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                // Seta data de hoje como padrão
+                document.getElementById('inputDate').valueAsDate = new Date();
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        async function registerSale(event) {
+            event.preventDefault();
+            
+            const btn = document.getElementById('btnSave');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin size-4"></i> Salvando...';
+            btn.disabled = true;
+
+            try {
+                // Pegar valores
+                const rawDate = document.getElementById('inputDate').value; // yyyy-mm-dd
+                const [y, m, d] = rawDate.split('-');
+                const formattedDate = `${d}/${m}/${y}`; // Formato dd/mm/yyyy para o Firebase
+
+                const units = parseInt(document.getElementById('inputUnits').value);
+                const price = parseFloat(document.getElementById('inputPrice').value);
+                const total = units * price;
+
+                // Formatar números como strings "1.200,00" para manter consistência com dados legados
+                const priceStr = price.toLocaleString('pt-PT', {minimumFractionDigits: 2});
+                const totalStr = total.toLocaleString('pt-PT', {minimumFractionDigits: 2});
+
+                const newSale = {
+                    date: formattedDate,
+                    region: document.getElementById('inputRegion').value,
+                    seller: document.getElementById('inputSeller').value,
+                    product: document.getElementById('inputProduct').value,
+                    units: units,
+                    price: priceStr,
+                    total: totalStr
+                };
+
+                // Enviar para Firestore
+                await db.collection('vendas').add(newSale);
+                
+                // Sucesso
+                toggleModal(false);
+                event.target.reset(); // Limpa formulário
+                await init(); // Recarrega dados
+                
+                // Feedback visual rápido (Toast simples)
+                alert("Venda registrada com sucesso!");
+
+            } catch (error) {
+                console.error("Erro ao salvar:", error);
+                alert("Erro ao salvar venda: " + error.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
         // --- SEED (Popular Banco) ---
         async function seedDatabase() {
             const rawData = [
@@ -485,11 +629,18 @@
             const regionSelect = document.getElementById('filterRegion');
             const sellerSelect = document.getElementById('filterSeller');
             
+            // Mantém seleção atual se possível
+            const currentRegion = regionSelect.value;
+            const currentSeller = sellerSelect.value;
+
             regionSelect.length = 1; 
             sellerSelect.length = 1;
 
             regions.forEach(r => regionSelect.add(new Option(r, r)));
             sellers.forEach(s => sellerSelect.add(new Option(s, s)));
+
+            if(regions.includes(currentRegion)) regionSelect.value = currentRegion;
+            if(sellers.includes(currentSeller)) sellerSelect.value = currentSeller;
         }
 
         function getFilteredData() {
