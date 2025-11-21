@@ -161,8 +161,8 @@
             align-items: center;
             gap: 2px;
         }
-        .trend-positive { background-color: #dcfce7; color: #166534; } /* green-100 / green-800 */
-        .trend-negative { background-color: #fee2e2; color: #991b1b; } /* red-100 / red-800 */
+        .trend-positive { background-color: #dcfce7; color: #166534; }
+        .trend-negative { background-color: #fee2e2; color: #991b1b; }
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -279,18 +279,29 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <!-- Timeline Chart (Takes 2 columns) -->
-                <div class="card lg:col-span-2">
-                    <div class="flex justify-between items-center mb-2">
+                <div class="card lg:col-span-2 flex flex-col">
+                    <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
                         <h3 class="text-lg font-bold text-slate-800">Evolução de Vendas</h3>
-                        <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200" id="simIndicator" style="display:none">
-                            Simulação Ativa
-                        </span>
+                        <div class="flex gap-2">
+                            <!-- Botões de Alternância de Visualização -->
+                            <div class="bg-slate-100 p-1 rounded-lg flex">
+                                <button onclick="changeTimelineView('daily')" id="btnDaily" class="px-3 py-1 text-xs font-medium rounded-md transition-colors bg-white shadow-sm text-slate-800">
+                                    Dias
+                                </button>
+                                <button onclick="changeTimelineView('monthly')" id="btnMonthly" class="px-3 py-1 text-xs font-medium rounded-md transition-colors text-slate-500 hover:text-slate-800">
+                                    Meses
+                                </button>
+                            </div>
+                            <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200" id="simIndicator" style="display:none">
+                                Simulação Ativa
+                            </span>
+                        </div>
                     </div>
                     <!-- Monthly Growth Stats Container -->
                     <div id="monthlyGrowthContainer" class="flex gap-2 mb-4 flex-wrap">
                         <!-- Injected by JS -->
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container flex-1">
                         <canvas id="chartTimeline"></canvas>
                     </div>
                 </div>
@@ -345,7 +356,7 @@
                     <div class="w-full md:w-1/2 p-4">
                         <h3 class="text-lg font-bold text-slate-800 mb-4">Performance por Produto</h3>
                         <div class="space-y-4">
-                            <p class="text-sm text-slate-500">Distribuição de receita entre categorias.</p>
+                            <p class="text-sm text-slate-500">Distribuição de receita entre categorias. Passe o rato no gráfico para ver detalhes.</p>
                             <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
                                 <span class="text-xs text-slate-400 uppercase">Produto Mais Vendido</span>
                                 <p class="font-bold text-slate-800 text-lg" id="bestSellingProduct">-</p>
@@ -366,6 +377,28 @@
         </footer>
     </div>
 
+    <!-- FIREBASE INITIALIZATION -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC25CufFUtvmUWF9_59I4H5B-6ua_xfbgc",
+            authDomain: "relatorio-aprendizado.firebaseapp.com",
+            projectId: "relatorio-aprendizado",
+            storageBucket: "relatorio-aprendizado.firebasestorage.app",
+            messagingSenderId: "943120214098",
+            appId: "1:943120214098:web:010f69f1e040895b7bd78b"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        console.log("Firebase Initialized:", app);
+    </script>
+
     <script>
         // Initialize Icons
         lucide.createIcons();
@@ -374,6 +407,7 @@
         let simulationPercentage = 0;
         let currentCurrency = 'EUR'; 
         let hoverTimeout; 
+        let timelineViewMode = 'daily'; // 'daily' or 'monthly'
         
         const currencyRates = { 'EUR': 1, 'BRL': 6.15 };
 
@@ -400,17 +434,26 @@
             return new Date(parts[2], parts[1] - 1, parts[0]);
         }
 
-        const salesData = rawPdfData.map(item => ({
-            dateObj: parseDate(item.date),
-            dateStr: item.date,
-            month: item.date.substring(3, 10), // MM/YYYY para agrupar
-            region: item.region.trim(),
-            seller: item.seller.trim(),
-            product: item.product ? item.product.trim() : "Indefinido",
-            units: parseInt(item.units),
-            unitPrice: parseCurrency(item.price),
-            total: parseCurrency(item.total)
-        })).sort((a, b) => a.dateObj - b.dateObj);
+        // Helper para formatar data como "Nome do Mês" (ex: Janeiro)
+        function formatMonthName(dateObj) {
+            return new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(dateObj);
+        }
+
+        const salesData = rawPdfData.map(item => {
+            const dateObj = parseDate(item.date);
+            return {
+                dateObj: dateObj,
+                dateStr: item.date,
+                month: item.date.substring(3, 10), // MM/YYYY
+                monthName: formatMonthName(dateObj), // Nome por extenso
+                region: item.region.trim(),
+                seller: item.seller.trim(),
+                product: item.product ? item.product.trim() : "Indefinido",
+                units: parseInt(item.units),
+                unitPrice: parseCurrency(item.price),
+                total: parseCurrency(item.total)
+            };
+        }).sort((a, b) => a.dateObj - b.dateObj);
 
         let chartTimeline, chartRegion;
         
@@ -444,6 +487,7 @@
             document.getElementById('filterCurrency').value = 'EUR';
             currentCurrency = 'EUR';
             simulationPercentage = 0;
+            timelineViewMode = 'daily';
             updateSimUI();
             updateDashboard();
         }
@@ -470,6 +514,23 @@
             } else {
                 indicator.style.display = 'none';
             }
+        }
+
+        function changeTimelineView(mode) {
+            timelineViewMode = mode;
+            const btnDaily = document.getElementById('btnDaily');
+            const btnMonthly = document.getElementById('btnMonthly');
+            const activeClass = "bg-white shadow-sm text-slate-800";
+            const inactiveClass = "text-slate-500 hover:text-slate-800 bg-transparent shadow-none";
+            
+            if(mode === 'daily') {
+                btnDaily.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeClass}`;
+                btnMonthly.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${inactiveClass}`;
+            } else {
+                btnMonthly.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeClass}`;
+                btnDaily.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${inactiveClass}`;
+            }
+            updateDashboard();
         }
 
         function getFilteredData() {
@@ -538,7 +599,6 @@
             document.getElementById('bestSellingProduct').innerText = bestProduct ? bestProduct[0] : "-";
         }
 
-        // --- RENDER HORIZONTAL SELLERS COM % DO TOTAL ---
         function renderHorizontalSellers(data, totalRevenue) {
             const container = document.getElementById('sellersContainer');
             container.innerHTML = '';
@@ -690,7 +750,6 @@
             }
         }
 
-        // --- FUNÇÃO DE CÁLCULO DE CRESCIMENTO MENSAL ---
         function renderCharts(data) {
             if (chartTimeline) chartTimeline.destroy();
             if (chartRegion) chartRegion.destroy();
@@ -698,51 +757,48 @@
             Chart.defaults.font.family = "'Inter', sans-serif";
             Chart.defaults.color = colors.slate;
 
-            // 1. Agrupar por Mês (usando MM/YYYY)
+            // 1. Agrupar por Mês (usando chave YYYY-MM para sort, mas label por extenso)
             const monthMap = {};
-            const monthLabels = []; // Para manter a ordem correta
+            const monthKeys = [];
             
             data.forEach(item => {
-                // Criar chave ordenável (YYYY-MM) para o mapa, mas exibir MM/YYYY
-                const key = item.dateStr.split('/').reverse().slice(0, 2).join('-'); // 2025-01
-                const displayLabel = item.month; // 01/2025
+                // Chave de ordenação (ex: 2025-01)
+                const sortKey = item.dateStr.split('/').reverse().slice(0, 2).join('-'); 
+                const displayLabel = item.monthName; // ex: "Janeiro"
                 
-                if (!monthMap[key]) {
-                    monthMap[key] = { total: 0, label: displayLabel };
-                    monthLabels.push(key);
+                if (!monthMap[sortKey]) {
+                    monthMap[sortKey] = { total: 0, label: displayLabel };
+                    monthKeys.push(sortKey);
                 }
-                monthMap[key].total += item.total;
+                monthMap[sortKey].total += item.total;
             });
-            
-            // Ordenar meses
-            monthLabels.sort(); // Ordena string '2025-01', '2025-02', etc.
+            monthKeys.sort(); // Ordena cronologicamente "2025-01", "2025-02"
 
-            // 2. Calcular Variação (Growth)
+            // Stats Section (MoM Growth)
             const growthContainer = document.getElementById('monthlyGrowthContainer');
-            growthContainer.innerHTML = ''; // Limpar
+            growthContainer.innerHTML = '';
             
-            // Se houver pelo menos 2 meses, calcular variações
-            if (monthLabels.length > 1) {
-                for (let i = 1; i < monthLabels.length; i++) {
-                    const prevKey = monthLabels[i-1];
-                    const currKey = monthLabels[i];
+            if (monthKeys.length > 1) {
+                for (let i = 1; i < monthKeys.length; i++) {
+                    const prevKey = monthKeys[i-1];
+                    const currKey = monthKeys[i];
                     
                     const prevVal = monthMap[prevKey].total;
                     const currVal = monthMap[currKey].total;
-                    
                     const percentage = prevVal > 0 ? ((currVal - prevVal) / prevVal * 100) : 0;
+                    
                     const isPositive = percentage >= 0;
                     const trendClass = isPositive ? 'trend-positive' : 'trend-negative';
                     const arrow = isPositive ? '↗' : '↘';
                     
-                    // Extrair apenas o mês nome/número curto para exibir
-                    const prevMonthName = monthMap[prevKey].label.split('/')[0];
-                    const currMonthName = monthMap[currKey].label.split('/')[0];
+                    // Nomes dos meses por extenso
+                    const prevMonthName = monthMap[prevKey].label;
+                    const currMonthName = monthMap[currKey].label;
                     
                     const badge = document.createElement('div');
                     badge.className = `trend-badge ${trendClass} border border-current bg-opacity-20`;
+                    // Ex: "Janeiro→Fevereiro: ↗ 15.0%"
                     badge.innerHTML = `<span class="text-[10px] uppercase text-slate-500 mr-1 font-normal">${prevMonthName}→${currMonthName}:</span> ${arrow} ${Math.abs(percentage).toFixed(1)}%`;
-                    
                     growthContainer.appendChild(badge);
                 }
             } else {
@@ -750,15 +806,25 @@
             }
 
             // --- Timeline Chart Data Prep ---
-            // Re-usando a lógica original de dias para o gráfico, mas calculando conversão
-            const dateMap = {};
-            data.forEach(item => {
-                if (!dateMap[item.dateStr]) dateMap[item.dateStr] = 0;
-                dateMap[item.dateStr] += item.total;
-            });
-            const sortedDates = Object.keys(dateMap).sort((a, b) => parseDate(a) - parseDate(b));
-            
-            const realData = sortedDates.map(d => convert(dateMap[d]));
+            let labels = [];
+            let realData = [];
+
+            if (timelineViewMode === 'daily') {
+                const dateMap = {};
+                data.forEach(item => {
+                    if (!dateMap[item.dateStr]) dateMap[item.dateStr] = 0;
+                    dateMap[item.dateStr] += item.total;
+                });
+                // Sort dates for chart
+                labels = Object.keys(dateMap).sort((a, b) => parseDate(a) - parseDate(b));
+                realData = labels.map(d => convert(dateMap[d]));
+            } else {
+                // Modo Mensal: usar os dados agregados acima, mas com Labels por extenso
+                labels = monthKeys.map(key => monthMap[key].label); // ["Janeiro", "Fevereiro"...]
+                realData = monthKeys.map(key => convert(monthMap[key].total));
+            }
+
+            // Calcular Projeção
             const projectedData = realData.map(val => val * (1 + simulationPercentage / 100));
 
             const datasets = [{
@@ -788,7 +854,7 @@
             
             chartTimeline = new Chart(document.getElementById('chartTimeline'), {
                 type: 'line',
-                data: { labels: sortedDates, datasets: datasets },
+                data: { labels: labels, datasets: datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
