@@ -14,7 +14,6 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
@@ -123,19 +122,6 @@
             transform: translateY(-5px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
-        .display-card::after {
-            content: '';
-            position: absolute;
-            right: -4px;
-            top: -5%;
-            height: 110%;
-            width: 20rem;
-            background: linear-gradient(to left, rgba(255,255,255,0.4), transparent);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.7s;
-        }
-        .display-card:hover::after { opacity: 1; }
         
         /* --- Custom Donut Chart CSS --- */
         .donut-segment {
@@ -151,19 +137,6 @@
             pointer-events: none;
             transition: opacity 0.2s ease;
         }
-        
-        /* Badge de Variação */
-        .trend-badge {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 0.1rem 0.4rem;
-            border-radius: 9999px;
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-        }
-        .trend-positive { background-color: #dcfce7; color: #166534; }
-        .trend-negative { background-color: #fee2e2; color: #991b1b; }
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -186,7 +159,7 @@
                     <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-200 to-blue-400 flex items-center gap-2">
                         <i data-lucide="layout-dashboard" class="text-teal-400"></i> Dashboard de Vendas
                     </h1>
-                    <p class="text-slate-300 text-sm mt-1">Análise de Performance Q1 2025</p>
+                    <p class="text-slate-300 text-sm mt-1">Análise de Performance Q1 2025 (Firebase)</p>
                 </div>
                 <div class="mt-4 md:mt-0">
                     <button onclick="exportCSV()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 shadow-lg">
@@ -284,7 +257,6 @@
                     <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
                         <h3 class="text-lg font-bold text-slate-800">Evolução de Vendas</h3>
                         <div class="flex gap-2">
-                            <!-- Botões de Alternância de Visualização -->
                             <div class="bg-slate-100 p-1 rounded-lg flex">
                                 <button onclick="changeTimelineView('daily')" id="btnDaily" class="px-3 py-1 text-xs font-medium rounded-md transition-colors bg-white shadow-sm text-slate-800">
                                     Dias
@@ -297,10 +269,6 @@
                                 Simulação Ativa
                             </span>
                         </div>
-                    </div>
-                    <!-- Monthly Growth Stats Container -->
-                    <div id="monthlyGrowthContainer" class="flex gap-2 mb-4 flex-wrap">
-                        <!-- Injected by JS -->
                     </div>
                     <div class="chart-container flex-1">
                         <canvas id="chartTimeline"></canvas>
@@ -374,454 +342,154 @@
         </section>
 
         <footer class="bg-slate-900/90 backdrop-blur text-slate-400 py-6 text-center text-sm mt-auto border-t border-slate-800">
-            <p>Gerado automaticamente com base no Relatório de Vendas Q1 2025.</p>
+            <p>Gerado automaticamente com base no Banco de Dados Firestore.</p>
         </footer>
     </div>
 
-    <!-- === FIREBASE INTEGRATION === -->
+    <!-- FIREBASE SDK (COMPATIBILIDADE) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-<script>
-    // Inicializa ícones
-    lucide.createIcons();
-
-    // --- CONFIGURAÇÃO (Suas chaves corretas) ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyC25CufFUtvmUWF9_59I4H5B-6ua_xfbgc",
-        authDomain: "relatorio-aprendizado.firebaseapp.com",
-        projectId: "relatorio-aprendizado",
-        storageBucket: "relatorio-aprendizado.firebasestorage.app",
-        messagingSenderId: "943120214098",
-        appId: "1:943120214098:web:010f69f1e040895b7bd78b"
-    };
-
-    // Inicializa Firebase de forma Global
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(); // Agora o 'db' existe para todo o código!
-
-    // --- VARIÁVEIS GLOBAIS ---
-    let salesData = []; 
-    let simulationPercentage = 0;
-    let currentCurrency = 'EUR'; 
-    let timelineViewMode = 'daily';
-    const currencyRates = { 'EUR': 1, 'BRL': 6.15 };
-    let chartTimeline, chartRegion;
-
-    // --- FUNÇÕES AUXILIARES ---
-    function parseCurrency(val) {
-        if (typeof val === 'number') return val;
-        if (!val) return 0;
-        const cleanStr = val.toString().replace(/\./g, '').replace(',', '.');
-        return parseFloat(cleanStr);
-    }
-
-    function parseDate(str) {
-        const parts = str.split('/');
-        return new Date(parts[2], parts[1] - 1, parts[0]);
-    }
-
-    function formatMonthName(dateObj) {
-        return new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(dateObj);
-    }
-
-    function formatMoney(value) {
-        const locale = currentCurrency === 'EUR' ? 'pt-PT' : 'pt-BR';
-        return new Intl.NumberFormat(locale, { style: 'currency', currency: currentCurrency }).format(value);
-    }
-
-    function convert(eurValue) {
-        const rate = currencyRates[currentCurrency];
-        const simMultiplier = 1 + (simulationPercentage / 100);
-        return eurValue * rate * simMultiplier;
-    }
-
-    // --- FUNÇÃO PRINCIPAL (INIT) ---
-    async function init() {
-        console.log("🚀 Iniciando conexão com Firebase...");
-        
-        try {
-            // Busca a coleção 'vendas'
-            const snapshot = await db.collection('vendas').get();
-            
-            if (snapshot.empty) {
-                console.log("⚠️ Banco vazio. Criando dados de teste...");
-                await seedDatabase();
-                return;
-            }
-
-            console.log(`📦 Encontrados ${snapshot.size} registros.`);
-
-            salesData = snapshot.docs.map(doc => {
-                const item = doc.data();
-                if (!item.date) return null;
-                const dateObj = parseDate(item.date);
-                
-                return {
-                    id: doc.id,
-                    dateObj: dateObj,
-                    dateStr: item.date,
-                    month: item.date.substring(3, 10),
-                    monthName: formatMonthName(dateObj),
-                    region: item.region,
-                    seller: item.seller,
-                    product: item.product,
-                    units: parseInt(item.units || 0),
-                    unitPrice: parseCurrency(item.price),
-                    total: parseCurrency(item.total)
-                };
-            }).filter(i => i !== null).sort((a, b) => a.dateObj - b.dateObj);
-
-            populateFilters();
-            updateDashboard();
-            console.log("✅ Dashboard atualizado!");
-
-        } catch (error) {
-            console.error("❌ Erro:", error);
-            alert("Erro ao carregar dados. Verifique o Console (F12).");
-        }
-    }
-
-    // --- SEED (Cria dados se o banco estiver vazio) ---
-    async function seedDatabase() {
-        const rawPdfData = [
-            { date: "02/01/2025", region: "Norte", seller: "João Silva", product: "Portátil Pro 15\"", units: "2", price: "1.200,00", total: "2.400,00" },
-            { date: "05/01/2025", region: "Lisboa", seller: "Ana Gomes", product: "Monitor 27\"", units: "5", price: "300,00", total: "1.500,00" },
-            { date: "10/01/2025", region: "Algarve", seller: "Pedro Costa", product: "Teclado Mecânico", units: "10", price: "150,00", total: "1.500,00" }
-        ];
-
-        const batch = db.batch();
-        rawPdfData.forEach((item) => {
-            const docRef = db.collection('vendas').doc();
-            batch.set(docRef, item);
-        });
-        await batch.commit();
-        location.reload();
-    }
-
-    // --- FUNÇÕES DE UI (Filtros e Gráficos) ---
-    function populateFilters() {
-        const regions = [...new Set(salesData.map(d => d.region))].sort();
-        const sellers = [...new Set(salesData.map(d => d.seller))].sort();
-        const rSelect = document.getElementById('filterRegion');
-        const sSelect = document.getElementById('filterSeller');
-        
-        // Limpa mantendo a primeira opção
-        rSelect.length = 1; 
-        sSelect.length = 1;
-
-        regions.forEach(r => rSelect.add(new Option(r, r)));
-        sellers.forEach(s => sSelect.add(new Option(s, s)));
-    }
-
-    function getFilteredData() {
-        const regionVal = document.getElementById('filterRegion').value;
-        const sellerVal = document.getElementById('filterSeller').value;
-        const startDateVal = document.getElementById('filterStartDate').value;
-        const endDateVal = document.getElementById('filterEndDate').value;
-
-        return salesData.filter(item => {
-            const matchRegion = regionVal === 'all' || item.region === regionVal;
-            const matchSeller = sellerVal === 'all' || item.seller === sellerVal;
-            let matchDate = true;
-            if (startDateVal) {
-                const sParts = startDateVal.split('-');
-                matchDate = matchDate && (item.dateObj >= new Date(sParts[0], sParts[1] - 1, sParts[2]));
-            }
-            if (endDateVal) {
-                const eParts = endDateVal.split('-');
-                matchDate = matchDate && (item.dateObj <= new Date(eParts[0], eParts[1] - 1, eParts[2]));
-            }
-            return matchRegion && matchSeller && matchDate;
-        });
-    }
-
-    function updateDashboard() {
-        const currentData = getFilteredData();
-        const totalRevenue = currentData.reduce((acc, item) => acc + convert(item.total), 0);
-        
-        // KPIs
-        const totalUnits = currentData.reduce((acc, item) => acc + item.units, 0);
-        const avgTicket = totalUnits > 0 ? (totalRevenue / totalUnits) : 0;
-
-        document.getElementById('kpiTotalSales').innerText = formatMoney(totalRevenue);
-        document.getElementById('kpiTotalUnits').innerText = totalUnits;
-        document.getElementById('kpiAvgTicket').innerText = formatMoney(avgTicket);
-
-        // Top Produto
-        const pMap = {};
-        currentData.forEach(d => pMap[d.product] = (pMap[d.product] || 0) + convert(d.total));
-        const best = Object.entries(pMap).sort((a,b) => b[1] - a[1])[0];
-        document.getElementById('bestSellingProduct').innerText = best ? best[0] : "-";
-
-        renderCharts(currentData);
-        renderHorizontalSellers(currentData, totalRevenue);
-        renderCustomDonut(currentData);
-    }
-
-    // Funções de Controle
-    function updateCurrency() { currentCurrency = document.getElementById('filterCurrency').value; updateDashboard(); }
-    function changeTimelineView(mode) { timelineViewMode = mode; updateDashboard(); }
-    function updateSimulation(delta) {
-        simulationPercentage += delta;
-        const el = document.getElementById('simValue');
-        el.innerText = (simulationPercentage > 0 ? '+' : '') + simulationPercentage + '%';
-        const ind = document.getElementById('simIndicator');
-        if(simulationPercentage !== 0) {
-             ind.style.display = 'block'; 
-             ind.innerText = `Simulando: ${simulationPercentage}%`;
-        } else { ind.style.display = 'none'; }
-        updateDashboard();
-    }
-    function resetFilters() {
-        document.getElementById('filterRegion').value = 'all';
-        document.getElementById('filterSeller').value = 'all';
-        document.getElementById('filterStartDate').value = '';
-        document.getElementById('filterEndDate').value = '';
-        simulationPercentage = 0;
-        updateSimulation(0);
-        updateDashboard();
-    }
-    function exportCSV() {
-        const data = getFilteredData();
-        if (!data.length) return alert("Sem dados");
-        let csv = "Data,Regiao,Vendedor,Produto,Total\n";
-        data.forEach(r => csv += `${r.dateStr},${r.region},${r.seller},${r.product},${r.total.toFixed(2)}\n`);
-        const link = document.createElement("a");
-        link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
-        link.download = "vendas.csv";
-        link.click();
-    }
-
-    // --- GRÁFICOS ---
-    function renderCharts(data) {
-        // Timeline
-        const ctxTime = document.getElementById('chartTimeline').getContext('2d');
-        let labels = [], values = [];
-        
-        if (timelineViewMode === 'daily') {
-            const g = {};
-            data.forEach(d => g[d.dateStr] = (g[d.dateStr]||0) + convert(d.total));
-            labels = Object.keys(g); values = Object.values(g);
-        } else {
-            const g = {};
-            data.forEach(d => { const k = d.monthName; g[k] = (g[k]||0) + convert(d.total); });
-            labels = Object.keys(g); values = Object.values(g);
-        }
-
-        if (chartTimeline) chartTimeline.destroy();
-        chartTimeline = new Chart(ctxTime, {
-            type: 'line',
-            data: { labels, datasets: [{ label: 'Vendas', data: values, borderColor: '#0EA5A4', fill: true, backgroundColor: 'rgba(14,165,164,0.1)', tension: 0.4 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
-        });
-
-        // Região
-        const ctxReg = document.getElementById('chartRegion').getContext('2d');
-        const rMap = {};
-        data.forEach(d => rMap[d.region] = (rMap[d.region]||0) + convert(d.total));
-        
-        if (chartRegion) chartRegion.destroy();
-        chartRegion = new Chart(ctxReg, {
-            type: 'bar',
-            data: { labels: Object.keys(rMap), datasets: [{ data: Object.values(rMap), backgroundColor: ['#3B82F6', '#0EA5A4', '#F59E0B'] }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
-        });
-    }
-
-    function renderHorizontalSellers(data, total) {
-        const c = document.getElementById('sellersContainer'); c.innerHTML = '';
-        const sMap = {};
-        data.forEach(d => sMap[d.seller] = (sMap[d.seller]||0) + convert(d.total));
-        const sorted = Object.entries(sMap).sort((a,b) => b[1]-a[1]).slice(0,3);
-        const medals = ['🥇','🥈','🥉'];
-        sorted.forEach((i, idx) => {
-            c.innerHTML += `<div class="p-2 border rounded bg-white flex flex-col items-center text-center shadow-sm">
-                <div class="text-xl">${medals[idx]}</div>
-                <div class="text-xs font-bold truncate w-full">${i[0]}</div>
-                <div class="text-xs text-slate-500">${formatMoney(i[1])}</div>
-            </div>`;
-        });
-    }
-
-    function renderCustomDonut(data) {
-        const c = document.getElementById('customDonutContainer'); c.innerHTML = '';
-        const pMap = {};
-        data.forEach(d => pMap[d.product] = (pMap[d.product]||0) + convert(d.total));
-        const dataset = Object.entries(pMap).map(([k,v]) => ({label:k, value:v})).sort((a,b)=>b.value-a.value);
-        const total = dataset.reduce((acc,i)=>acc+i.value, 0);
-        
-        if(total===0) { c.innerHTML = '<p class="text-slate-400">Sem dados</p>'; return; }
-
-        const size=260, stroke=24, r=(size-stroke)/2, circ=2*Math.PI*r;
-        let offset=0;
-        const colors = ['#3B82F6','#0EA5A4','#F59E0B','#6366F1','#EC4899'];
-        
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", size); svg.setAttribute("height", size);
-        svg.classList.add("-rotate-90");
-        
-        dataset.forEach((d, i) => {
-            const seg = (d.value/total)*circ;
-            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circle.setAttribute("cx", size/2); circle.setAttribute("cy", size/2);
-            circle.setAttribute("r", r); circle.setAttribute("fill", "transparent");
-            circle.setAttribute("stroke", colors[i%colors.length]);
-            circle.setAttribute("stroke-width", stroke);
-            circle.setAttribute("stroke-dasharray", `${seg} ${circ}`);
-            circle.setAttribute("stroke-dashoffset", -offset);
-            circle.classList.add("donut-segment");
-            svg.appendChild(circle);
-            offset += seg;
-        });
-        // Texto Centro
-        const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        txt.setAttribute("x", "50%"); txt.setAttribute("y", "50%");
-        txt.setAttribute("text-anchor", "middle"); txt.setAttribute("dy", ".3em");
-        txt.setAttribute("transform", `rotate(90 ${size/2} ${size/2})`);
-        txt.classList.add("font-bold", "fill-slate-700");
-        txt.textContent = "Total";
-        svg.appendChild(txt);
-        c.appendChild(svg);
-    }
-
-    // Iniciar ao carregar
-    window.addEventListener('DOMContentLoaded', init);
-</script>
-
-    <!-- === DASHBOARD MAIN LOGIC === -->
+    <!-- SCRIPT ÚNICO E CORRIGIDO -->
     <script>
-        // Initialize Icons
+        // Inicializa Ícones
         lucide.createIcons();
 
-        // --- GLOBAL STATE ---
+        // --- CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC25CufFUtvmUWF9_59I4H5B-6ua_xfbgc",
+            authDomain: "relatorio-aprendizado.firebaseapp.com",
+            projectId: "relatorio-aprendizado",
+            storageBucket: "relatorio-aprendizado.firebasestorage.app",
+            messagingSenderId: "943120214098",
+            appId: "1:943120214098:web:010f69f1e040895b7bd78b"
+        };
+
+        // Iniciar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- ESTADO GLOBAL ---
+        let salesData = [];
         let simulationPercentage = 0;
-        let currentCurrency = 'EUR'; 
-        let hoverTimeout; 
-        let timelineViewMode = 'daily'; // 'daily' or 'monthly'
-        
+        let currentCurrency = 'EUR';
+        let timelineViewMode = 'daily';
         const currencyRates = { 'EUR': 1, 'BRL': 6.15 };
 
-        const rawPdfData = [
-            { date: "02/01/2025", region: "Norte", seller: "João Silva", product: "Portátil Pro 15\"", units: "2", price: "1.200,00", total: "2.400,00" },
-            { date: "05/01/2025", region: "Lisboa", seller: "Ana Gomes", product: "Monitor 27\"", units: "5", price: "300,00", total: "1.500,00" },
-            { date: "10/01/2025", region: "Algarve", seller: "Pedro Costa", product: "Teclado Mecânico", units: "10", price: "150,00", total: "1.500,00" },
-            { date: "15/01/2025", region: "Norte", seller: "João Silva", product: "Rato Ergonómico", units: "8", price: "80,00", total: "640,00" },
-            { date: "22/01/2025", region: "Centro", seller: "Maria Neves", product: "Portátil Pro 13\"", units: "3", price: "1.000,00", total: "3.000,00" },
-            { date: "05/02/2025", region: "Lisboa", seller: "Ana Gomes", product: "Portátil Pro 15\"", units: "1", price: "1.200,00", total: "1.200,00" },
-            { date: "12/02/2025", region: "Algarve", seller: "Pedro Costa", product: "Monitor 24", units: "4", price: "200,00", total: "800,00" },
-            { date: "18/02/2025", region: "Centro", seller: "Maria Neves", product: "Monitor 24\" Docking Station", units: "6", price: "180,00", total: "1.080,00" },
-            { date: "03/03/2025", region: "Norte", seller: "João Silva", product: "Headset Wireless", units: "7", price: "120,00", total: "840,00" },
-            { date: "15/03/2025", region: "Lisboa", seller: "Ana Gomes", product: "Portátil Pro 13\"", units: "2", price: "1.000,00", total: "2.000,00" }
-        ];
+        // Variáveis para destruir gráficos antigos
+        let chartTimeline, chartRegion;
 
-        function parseCurrency(str) {
-            if (!str) return 0;
-            const cleanStr = str.replace(/\./g, '').replace(',', '.');
+        // --- FUNÇÕES UTILITÁRIAS ---
+        function parseCurrency(val) {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            const cleanStr = val.toString().replace(/\./g, '').replace(',', '.');
             return parseFloat(cleanStr);
         }
+
         function parseDate(str) {
             const parts = str.split('/');
             return new Date(parts[2], parts[1] - 1, parts[0]);
         }
 
-        // Helper para formatar data como "Nome do Mês" (ex: Janeiro)
         function formatMonthName(dateObj) {
             return new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(dateObj);
         }
 
-        const salesData = rawPdfData.map(item => {
-            const dateObj = parseDate(item.date);
-            return {
-                dateObj: dateObj,
-                dateStr: item.date,
-                month: item.date.substring(3, 10), // MM/YYYY
-                monthName: formatMonthName(dateObj), // Nome por extenso
-                region: item.region.trim(),
-                seller: item.seller.trim(),
-                product: item.product ? item.product.trim() : "Indefinido",
-                units: parseInt(item.units),
-                unitPrice: parseCurrency(item.price),
-                total: parseCurrency(item.total)
-            };
-        }).sort((a, b) => a.dateObj - b.dateObj);
-
-        let chartTimeline, chartRegion;
-        
-        const colors = {
-            slate: '#64748B',
-            blue: '#3B82F6',
-            teal: '#0EA5A4',
-            amber: '#F59E0B',
-            mixed: ['#3B82F6', '#0EA5A4', '#F59E0B', '#6366F1', '#EC4899', '#10B981']
-        };
-
-        function init() {
-            populateFilters();
-            updateDashboard();
+        function formatMoney(value) {
+            const locale = currentCurrency === 'EUR' ? 'pt-PT' : 'pt-BR';
+            return new Intl.NumberFormat(locale, { style: 'currency', currency: currentCurrency }).format(value);
         }
 
+        function convert(eurValue) {
+            const rate = currencyRates[currentCurrency];
+            const simMultiplier = 1 + (simulationPercentage / 100);
+            return eurValue * rate * simMultiplier;
+        }
+
+        // --- LÓGICA DE INICIALIZAÇÃO (INIT) ---
+        async function init() {
+            console.log("🚀 Inicializando Dashboard...");
+            try {
+                const snapshot = await db.collection('vendas').get();
+                
+                if (snapshot.empty) {
+                    console.log("⚠️ Banco vazio. Gerando dados de teste...");
+                    await seedDatabase();
+                    return;
+                }
+
+                console.log(`✅ Carregados ${snapshot.size} registros.`);
+
+                // Processa dados
+                salesData = snapshot.docs.map(doc => {
+                    const item = doc.data();
+                    if (!item.date) return null;
+                    
+                    const dateObj = parseDate(item.date);
+                    return {
+                        id: doc.id,
+                        dateObj: dateObj,
+                        dateStr: item.date,
+                        month: item.date.substring(3, 10),
+                        monthName: formatMonthName(dateObj),
+                        region: item.region,
+                        seller: item.seller,
+                        product: item.product,
+                        units: parseInt(item.units || 0),
+                        unitPrice: parseCurrency(item.price),
+                        total: parseCurrency(item.total)
+                    };
+                }).filter(i => i !== null).sort((a, b) => a.dateObj - b.dateObj);
+
+                populateFilters();
+                updateDashboard();
+
+            } catch (error) {
+                console.error("❌ Erro ao carregar:", error);
+                if (error.code === 'permission-denied') {
+                    alert("Erro de Permissão! Vá ao Console do Firebase > Firestore > Regras e mude para 'allow read, write: if true;'");
+                } else {
+                    alert("Erro ao carregar dados. Verifique o console.");
+                }
+            }
+        }
+
+        // --- SEED (Popular Banco) ---
+        async function seedDatabase() {
+            const rawData = [
+                { date: "02/01/2025", region: "Norte", seller: "João Silva", product: "Portátil Pro 15\"", units: "2", price: "1.200,00", total: "2.400,00" },
+                { date: "05/01/2025", region: "Lisboa", seller: "Ana Gomes", product: "Monitor 27\"", units: "5", price: "300,00", total: "1.500,00" },
+                { date: "10/01/2025", region: "Algarve", seller: "Pedro Costa", product: "Teclado Mecânico", units: "10", price: "150,00", total: "1.500,00" },
+                { date: "15/01/2025", region: "Norte", seller: "João Silva", product: "Rato Ergonómico", units: "8", price: "80,00", total: "640,00" },
+                { date: "22/01/2025", region: "Centro", seller: "Maria Neves", product: "Portátil Pro 13\"", units: "3", price: "1.000,00", total: "3.000,00" },
+                { date: "05/02/2025", region: "Lisboa", seller: "Ana Gomes", product: "Portátil Pro 15\"", units: "1", price: "1.200,00", total: "1.200,00" }
+            ];
+
+            const batch = db.batch();
+            rawData.forEach(item => {
+                const ref = db.collection('vendas').doc();
+                batch.set(ref, item);
+            });
+            
+            await batch.commit();
+            alert("Dados criados com sucesso! A página será recarregada.");
+            location.reload();
+        }
+
+        // --- UI & FILTROS ---
         function populateFilters() {
             const regions = [...new Set(salesData.map(d => d.region))].sort();
             const sellers = [...new Set(salesData.map(d => d.seller))].sort();
-            const regionSelect = document.getElementById('filterRegion');
-            regions.forEach(r => regionSelect.add(new Option(r, r)));
-            const sellerSelect = document.getElementById('filterSeller');
-            sellers.forEach(s => sellerSelect.add(new Option(s, s)));
-        }
-
-        function resetFilters() {
-            document.getElementById('filterRegion').value = 'all';
-            document.getElementById('filterSeller').value = 'all';
-            document.getElementById('filterStartDate').value = '';
-            document.getElementById('filterEndDate').value = '';
-            document.getElementById('filterCurrency').value = 'EUR';
-            currentCurrency = 'EUR';
-            simulationPercentage = 0;
-            timelineViewMode = 'daily';
-            updateSimUI();
-            updateDashboard();
-        }
-
-        function updateCurrency() {
-            currentCurrency = document.getElementById('filterCurrency').value;
-            updateDashboard();
-        }
-
-        function updateSimulation(delta) {
-            simulationPercentage += delta;
-            updateSimUI();
-            updateDashboard(); 
-        }
-
-        function updateSimUI() {
-            const el = document.getElementById('simValue');
-            el.innerText = (simulationPercentage > 0 ? '+' : '') + simulationPercentage + '%';
-            el.className = `text-3xl font-bold transition-all duration-300 ${simulationPercentage > 0 ? 'text-green-600' : (simulationPercentage < 0 ? 'text-red-500' : 'text-blue-600')}`;
-            const indicator = document.getElementById('simIndicator');
-            if(simulationPercentage !== 0) {
-                indicator.style.display = 'block';
-                indicator.innerText = `Simulando: ${simulationPercentage > 0 ? '+' : ''}${simulationPercentage}%`;
-            } else {
-                indicator.style.display = 'none';
-            }
-        }
-
-        function changeTimelineView(mode) {
-            timelineViewMode = mode;
-            const btnDaily = document.getElementById('btnDaily');
-            const btnMonthly = document.getElementById('btnMonthly');
-            const activeClass = "bg-white shadow-sm text-slate-800";
-            const inactiveClass = "text-slate-500 hover:text-slate-800 bg-transparent shadow-none";
             
-            if(mode === 'daily') {
-                btnDaily.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeClass}`;
-                btnMonthly.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${inactiveClass}`;
-            } else {
-                btnMonthly.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeClass}`;
-                btnDaily.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${inactiveClass}`;
-            }
-            updateDashboard();
+            const regionSelect = document.getElementById('filterRegion');
+            const sellerSelect = document.getElementById('filterSeller');
+            
+            regionSelect.length = 1; 
+            sellerSelect.length = 1;
+
+            regions.forEach(r => regionSelect.add(new Option(r, r)));
+            sellers.forEach(s => sellerSelect.add(new Option(s, s)));
         }
 
         function getFilteredData() {
@@ -834,381 +502,299 @@
                 const matchRegion = regionVal === 'all' || item.region === regionVal;
                 const matchSeller = sellerVal === 'all' || item.seller === sellerVal;
                 let matchDate = true;
+                
                 if (startDateVal) {
-                    const sParts = startDateVal.split('-');
-                    matchDate = matchDate && (item.dateObj >= new Date(sParts[0], sParts[1] - 1, sParts[2]));
+                    const parts = startDateVal.split('-');
+                    const sDate = new Date(parts[0], parts[1]-1, parts[2]);
+                    matchDate = matchDate && (item.dateObj >= sDate);
                 }
                 if (endDateVal) {
-                    const eParts = endDateVal.split('-');
-                    matchDate = matchDate && (item.dateObj <= new Date(eParts[0], eParts[1] - 1, eParts[2]));
+                    const parts = endDateVal.split('-');
+                    const eDate = new Date(parts[0], parts[1]-1, parts[2]);
+                    matchDate = matchDate && (item.dateObj <= eDate);
                 }
                 return matchRegion && matchSeller && matchDate;
             });
         }
 
-        function convert(eurValue) {
-            return eurValue * currencyRates[currentCurrency];
-        }
-
-        function formatMoney(value) {
-            const locale = currentCurrency === 'EUR' ? 'pt-PT' : 'pt-BR';
-            return new Intl.NumberFormat(locale, { style: 'currency', currency: currentCurrency }).format(value);
-        }
-
         function updateDashboard() {
-            const currentData = getFilteredData();
-            const totalRevenue = currentData.reduce((acc, item) => acc + item.total, 0);
-            
-            updateKPIs(currentData);
-            renderCharts(currentData);
-            renderHorizontalSellers(currentData, totalRevenue);
-            
-            const productMap = {};
-            currentData.forEach(item => productMap[item.product] = (productMap[item.product] || 0) + item.total);
-            
-            const donutData = Object.keys(productMap).map((key, index) => ({
-                label: key,
-                value: convert(productMap[key]), 
-                color: colors.mixed[index % colors.mixed.length]
-            })).sort((a, b) => b.value - a.value);
-
-            renderCustomDonut(donutData);
-        }
-
-        function updateKPIs(data) {
-            const totalSalesEur = data.reduce((acc, item) => acc + item.total, 0);
+            const data = getFilteredData();
+            const totalRevenue = data.reduce((acc, item) => acc + convert(item.total), 0);
             const totalUnits = data.reduce((acc, item) => acc + item.units, 0);
-            const avgTicketEur = totalUnits > 0 ? (totalSalesEur / totalUnits) : 0;
+            const avgTicket = totalUnits > 0 ? (totalRevenue / totalUnits) : 0;
 
-            document.getElementById('kpiTotalSales').innerText = formatMoney(convert(totalSalesEur));
+            document.getElementById('kpiTotalSales').innerText = formatMoney(totalRevenue);
             document.getElementById('kpiTotalUnits').innerText = totalUnits;
-            document.getElementById('kpiAvgTicket').innerText = formatMoney(convert(avgTicketEur));
-            
-            const productMap = {};
-            data.forEach(d => productMap[d.product] = (productMap[d.product] || 0) + d.total);
-            const bestProduct = Object.entries(productMap).sort((a,b) => b[1] - a[1])[0];
-            document.getElementById('bestSellingProduct').innerText = bestProduct ? bestProduct[0] : "-";
+            document.getElementById('kpiAvgTicket').innerText = formatMoney(avgTicket);
+
+            // Produto Top
+            const prodMap = {};
+            data.forEach(d => prodMap[d.product] = (prodMap[d.product] || 0) + convert(d.total));
+            const best = Object.entries(prodMap).sort((a,b) => b[1]-a[1])[0];
+            document.getElementById('bestSellingProduct').innerText = best ? best[0] : "-";
+
+            renderCharts(data);
+            renderHorizontalSellers(data, totalRevenue);
+            renderCustomDonut(data);
         }
 
-        function renderHorizontalSellers(data, totalRevenue) {
-            const container = document.getElementById('sellersContainer');
-            container.innerHTML = '';
-            const sellerMap = {};
-            data.forEach(item => sellerMap[item.seller] = (sellerMap[item.seller] || 0) + item.total);
-            const sortedSellers = Object.entries(sellerMap).sort((a,b) => b[1] - a[1]).slice(0, 3);
+        // --- CONTROLES ---
+        function updateCurrency() {
+            currentCurrency = document.getElementById('filterCurrency').value;
+            updateDashboard();
+        }
 
-            if (sortedSellers.length === 0) {
-                container.innerHTML = '<p class="text-slate-400 col-span-3 text-center">Sem dados</p>';
-                return;
+        function changeTimelineView(mode) {
+            timelineViewMode = mode;
+            
+            // Toggle Styles
+            const btnDaily = document.getElementById('btnDaily');
+            const btnMonthly = document.getElementById('btnMonthly');
+            const active = "bg-white shadow-sm text-slate-800";
+            const inactive = "text-slate-500 hover:text-slate-800 bg-transparent shadow-none";
+            
+            if(mode === 'daily') {
+                btnDaily.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${active}`;
+                btnMonthly.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${inactive}`;
+            } else {
+                btnMonthly.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${active}`;
+                btnDaily.className = `px-3 py-1 text-xs font-medium rounded-md transition-colors ${inactive}`;
             }
 
-            const medals = ['🥇', '🥈', '🥉'];
-            const styles = [
-                "border-teal-400 bg-teal-50 scale-105 z-10", 
-                "border-white/50 bg-white/60", 
-                "border-white/50 bg-white/60"
-            ];
+            updateDashboard();
+        }
 
-            sortedSellers.forEach((item, i) => {
-                const isFirst = i === 0;
-                const displayTotal = formatMoney(convert(item[1]));
-                const percentage = totalRevenue > 0 ? ((item[1] / totalRevenue) * 100).toFixed(1) : 0;
-                
-                const html = `
-                    <div class="display-card flex flex-col justify-between h-28 shadow-md ${styles[i]}">
-                        <div class="flex justify-between items-start">
-                            <div class="flex items-center gap-1">
-                                <span class="text-xl">${medals[i]}</span>
-                                <span class="text-[10px] bg-slate-200 text-slate-600 px-1 rounded font-bold">${percentage}% do Total</span>
-                            </div>
-                            ${isFirst ? '<i data-lucide="crown" class="size-4 text-amber-500"></i>' : ''}
-                        </div>
-                        <div class="mt-1">
-                            <p class="text-xs font-bold text-slate-800 truncate" title="${item[0]}">${item[0]}</p>
-                            <p class="text-sm font-bold text-slate-600 truncate">${displayTotal}</p>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += html;
+        function updateSimulation(delta) {
+            simulationPercentage += delta;
+            const el = document.getElementById('simValue');
+            el.innerText = (simulationPercentage > 0 ? '+' : '') + simulationPercentage + '%';
+            el.className = `text-3xl font-bold transition-all duration-300 ${simulationPercentage > 0 ? 'text-green-600' : (simulationPercentage < 0 ? 'text-red-500' : 'text-blue-600')}`;
+            
+            const ind = document.getElementById('simIndicator');
+            if(simulationPercentage !== 0) {
+                ind.style.display = 'block';
+                ind.innerText = `Simulação: ${simulationPercentage > 0 ? '+' : ''}${simulationPercentage}%`;
+            } else {
+                ind.style.display = 'none';
+            }
+            updateDashboard();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterRegion').value = 'all';
+            document.getElementById('filterSeller').value = 'all';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            document.getElementById('filterCurrency').value = 'EUR';
+            
+            currentCurrency = 'EUR';
+            simulationPercentage = 0;
+            timelineViewMode = 'daily';
+            changeTimelineView('daily'); // Reset styles
+            
+            document.getElementById('simValue').innerText = "0%";
+            document.getElementById('simValue').className = "text-3xl font-bold text-blue-600";
+            document.getElementById('simIndicator').style.display = 'none';
+            
+            updateDashboard();
+        }
+
+        function exportCSV() {
+            const data = getFilteredData();
+            if (!data.length) return alert("Sem dados para exportar.");
+            
+            let csv = "Data,Regiao,Vendedor,Produto,Unidades,Total\n";
+            data.forEach(r => {
+                csv += `${r.dateStr},${r.region},${r.seller},${r.product},${r.units},${r.total.toFixed(2)}\n`;
             });
-            lucide.createIcons();
+            
+            const link = document.createElement("a");
+            link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+            link.download = "vendas_firebase.csv";
+            link.click();
         }
 
-        function renderCustomDonut(data) {
-            const container = document.getElementById('customDonutContainer');
-            container.innerHTML = ''; 
-
-            if (data.length === 0) {
-                container.innerHTML = '<p class="text-slate-400">Sem dados</p>';
-                return;
-            }
-
-            const size = 260;
-            const strokeWidth = 24;
-            const radius = (size - strokeWidth) / 2;
-            const circumference = 2 * Math.PI * radius;
-            const totalValue = data.reduce((acc, curr) => acc + curr.value, 0);
-
-            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            svg.setAttribute("width", size);
-            svg.setAttribute("height", size);
-            svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
-            svg.classList.add("overflow-visible", "-rotate-90"); 
-
-            const baseCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            baseCircle.setAttribute("cx", size / 2);
-            baseCircle.setAttribute("cy", size / 2);
-            baseCircle.setAttribute("r", radius);
-            baseCircle.setAttribute("fill", "transparent");
-            baseCircle.setAttribute("stroke", "#e2e8f0");
-            baseCircle.setAttribute("stroke-width", strokeWidth);
-            svg.appendChild(baseCircle);
-
-            let cumulativePercent = 0;
-
-            data.forEach((segment, index) => {
-                if(segment.value === 0) return;
-
-                const percent = segment.value / totalValue;
-                const dashArray = `${percent * circumference} ${circumference}`;
-                const dashOffset = -(cumulativePercent * circumference);
-
-                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                circle.setAttribute("cx", size / 2);
-                circle.setAttribute("cy", size / 2);
-                circle.setAttribute("r", radius);
-                circle.setAttribute("fill", "transparent");
-                circle.setAttribute("stroke", segment.color);
-                circle.setAttribute("stroke-width", strokeWidth);
-                circle.setAttribute("stroke-dasharray", dashArray);
-                circle.setAttribute("stroke-dashoffset", circumference);
-                circle.setAttribute("stroke-linecap", "round");
-                circle.classList.add("donut-segment");
-
-                circle.addEventListener('mouseenter', () => {
-                    clearTimeout(hoverTimeout); 
-                    updateCenterText(segment.label, segment.value);
-                    circle.style.filter = `drop-shadow(0px 0px 8px ${segment.color})`;
-                    circle.style.transform = "scale(1.05)";
-                });
-
-                circle.addEventListener('mouseleave', () => {
-                    hoverTimeout = setTimeout(() => {
-                        resetCenterText();
-                    }, 50);
-                    circle.style.filter = "none";
-                    circle.style.transform = "scale(1)";
-                });
-
-                svg.appendChild(circle);
-
-                setTimeout(() => {
-                    circle.setAttribute("stroke-dashoffset", dashOffset);
-                }, 50 + (index * 100));
-
-                cumulativePercent += percent;
-            });
-
-            container.appendChild(svg);
-
-            const centerDiv = document.createElement("div");
-            centerDiv.className = "absolute flex flex-col items-center justify-center pointer-events-none transition-all duration-300";
-            centerDiv.style.width = `${size - strokeWidth * 2.5}px`;
-            centerDiv.style.height = `${size - strokeWidth * 2.5}px`;
-            
-            const titleEl = document.createElement("p");
-            titleEl.className = "text-slate-400 text-xs font-semibold uppercase tracking-wide mb-1";
-            titleEl.innerText = "Total";
-            
-            const valueEl = document.createElement("p");
-            valueEl.className = "text-2xl font-bold text-slate-800";
-            valueEl.innerText = formatMoney(totalValue);
-
-            centerDiv.appendChild(titleEl);
-            centerDiv.appendChild(valueEl);
-            container.appendChild(centerDiv);
-
-            function updateCenterText(label, value) {
-                titleEl.innerText = label;
-                valueEl.innerText = formatMoney(value);
-                valueEl.style.color = data.find(d => d.label === label).color;
-            }
-
-            function resetCenterText() {
-                titleEl.innerText = "Total";
-                valueEl.innerText = formatMoney(totalValue);
-                valueEl.style.color = "#1e293b"; 
-            }
-        }
-
+        // --- GRÁFICOS ---
         function renderCharts(data) {
-            if (chartTimeline) chartTimeline.destroy();
-            if (chartRegion) chartRegion.destroy();
-
-            Chart.defaults.font.family = "'Inter', sans-serif";
-            Chart.defaults.color = colors.slate;
-
-            // 1. Agrupar por Mês (usando chave YYYY-MM para sort, mas label por extenso)
-            const monthMap = {};
-            const monthKeys = [];
+            // Timeline Chart
+            const ctxTime = document.getElementById('chartTimeline').getContext('2d');
+            let labels = [], values = [];
             
-            data.forEach(item => {
-                // Chave de ordenação (ex: 2025-01)
-                const sortKey = item.dateStr.split('/').reverse().slice(0, 2).join('-'); 
-                const displayLabel = item.monthName; // ex: "Janeiro"
-                
-                if (!monthMap[sortKey]) {
-                    monthMap[sortKey] = { total: 0, label: displayLabel };
-                    monthKeys.push(sortKey);
-                }
-                monthMap[sortKey].total += item.total;
-            });
-            monthKeys.sort(); // Ordena cronologicamente "2025-01", "2025-02"
-
-            // Stats Section (MoM Growth)
-            const growthContainer = document.getElementById('monthlyGrowthContainer');
-            growthContainer.innerHTML = '';
-            
-            if (monthKeys.length > 1) {
-                for (let i = 1; i < monthKeys.length; i++) {
-                    const prevKey = monthKeys[i-1];
-                    const currKey = monthKeys[i];
-                    
-                    const prevVal = monthMap[prevKey].total;
-                    const currVal = monthMap[currKey].total;
-                    const percentage = prevVal > 0 ? ((currVal - prevVal) / prevVal * 100) : 0;
-                    
-                    const isPositive = percentage >= 0;
-                    const trendClass = isPositive ? 'trend-positive' : 'trend-negative';
-                    const arrow = isPositive ? '↗' : '↘';
-                    
-                    // Nomes dos meses por extenso
-                    const prevMonthName = monthMap[prevKey].label;
-                    const currMonthName = monthMap[currKey].label;
-                    
-                    const badge = document.createElement('div');
-                    badge.className = `trend-badge ${trendClass} border border-current bg-opacity-20`;
-                    // Ex: "Janeiro→Fevereiro: ↗ 15.0%"
-                    badge.innerHTML = `<span class="text-[10px] uppercase text-slate-500 mr-1 font-normal">${prevMonthName}→${currMonthName}:</span> ${arrow} ${Math.abs(percentage).toFixed(1)}%`;
-                    growthContainer.appendChild(badge);
-                }
-            } else {
-                 growthContainer.innerHTML = '<span class="text-xs text-slate-400 italic">Dados insuficientes para comparação mensal.</span>';
-            }
-
-            // --- Timeline Chart Data Prep ---
-            let labels = [];
-            let realData = [];
-
             if (timelineViewMode === 'daily') {
-                const dateMap = {};
-                data.forEach(item => {
-                    if (!dateMap[item.dateStr]) dateMap[item.dateStr] = 0;
-                    dateMap[item.dateStr] += item.total;
-                });
-                // Sort dates for chart
-                labels = Object.keys(dateMap).sort((a, b) => parseDate(a) - parseDate(b));
-                realData = labels.map(d => convert(dateMap[d]));
+                const g = {};
+                data.forEach(d => g[d.dateStr] = (g[d.dateStr] || 0) + convert(d.total));
+                labels = Object.keys(g);
+                values = Object.values(g);
             } else {
-                // Modo Mensal: usar os dados agregados acima, mas com Labels por extenso
-                labels = monthKeys.map(key => monthMap[key].label); // ["Janeiro", "Fevereiro"...]
-                realData = monthKeys.map(key => convert(monthMap[key].total));
-            }
-
-            // Calcular Projeção
-            const projectedData = realData.map(val => val * (1 + simulationPercentage / 100));
-
-            const datasets = [{
-                label: 'Receita Real',
-                data: realData,
-                borderColor: colors.blue,
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                tension: 0.3,
-                fill: true,
-                pointRadius: 4,
-                order: 2
-            }];
-
-            if (simulationPercentage !== 0) {
-                datasets.push({
-                    label: `Simulação (${simulationPercentage > 0 ? '+' : ''}${simulationPercentage}%)`,
-                    data: projectedData,
-                    borderColor: simulationPercentage > 0 ? colors.teal : '#EF4444',
-                    borderDash: [5, 5],
-                    backgroundColor: 'transparent',
-                    tension: 0.3,
-                    pointRadius: 0,
-                    pointHoverRadius: 4,
-                    order: 1
+                const g = {};
+                data.forEach(d => {
+                    const k = d.month + "|" + d.monthName; 
+                    g[k] = (g[k] || 0) + convert(d.total);
                 });
+                const sortedKeys = Object.keys(g).sort();
+                labels = sortedKeys.map(k => k.split('|')[1]);
+                values = sortedKeys.map(k => g[k]);
             }
-            
-            chartTimeline = new Chart(document.getElementById('chartTimeline'), {
+
+            if (chartTimeline) chartTimeline.destroy();
+            chartTimeline = new Chart(ctxTime, {
                 type: 'line',
-                data: { labels: labels, datasets: datasets },
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Vendas',
+                        data: values,
+                        borderColor: '#0EA5A4',
+                        backgroundColor: 'rgba(14, 165, 164, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4
+                    }]
+                },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: { 
-                        legend: { display: simulationPercentage !== 0 },
-                        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatMoney(ctx.raw)}` } }
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => formatMoney(ctx.raw) } }
                     },
-                    scales: { y: { beginAtZero: true, ticks: { callback: (val) => formatMoney(val) } } }
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: (v) => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } },
+                        x: { grid: { display: false } }
+                    }
                 }
             });
 
             // Region Chart
-            const regionMap = {};
-            data.forEach(item => regionMap[item.region] = (regionMap[item.region] || 0) + item.total);
-            const regionLabels = Object.keys(regionMap);
-            const regionValues = Object.values(regionMap).map(val => convert(val));
-
-            chartRegion = new Chart(document.getElementById('chartRegion'), {
+            const ctxReg = document.getElementById('chartRegion').getContext('2d');
+            const rMap = {};
+            data.forEach(d => rMap[d.region] = (rMap[d.region] || 0) + convert(d.total));
+            
+            if (chartRegion) chartRegion.destroy();
+            chartRegion = new Chart(ctxReg, {
                 type: 'bar',
                 data: {
-                    labels: regionLabels,
+                    labels: Object.keys(rMap),
                     datasets: [{
-                        label: 'Faturação',
-                        data: regionValues,
-                        backgroundColor: colors.teal + 'AA',
-                        borderColor: colors.teal,
-                        borderWidth: 1,
+                        label: 'Vendas',
+                        data: Object.values(rMap),
+                        backgroundColor: ['#3B82F6', '#0EA5A4', '#F59E0B', '#6366F1'],
                         borderRadius: 4
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => formatMoney(ctx.raw) } }
-                    },
-                    scales: { y: { ticks: { callback: (val) => formatMoney(val) } } }
+                    plugins: { legend: { display: false } },
+                    scales: { x: { grid: { display: false } }, y: { display: false } }
                 }
             });
         }
 
-        function exportCSV() {
-            const data = getFilteredData();
-            if (!data.length) return alert("Sem dados.");
+        function renderHorizontalSellers(data, total) {
+            const c = document.getElementById('sellersContainer');
+            c.innerHTML = '';
             
-            let csv = `Data,Região,Vendedor,Produto,Unidades,Preço Original(EUR),Total(${currentCurrency})\n`;
-            data.forEach(r => {
-                const totalConverted = convert(r.total).toFixed(2).replace('.',',');
-                csv += `${r.dateStr},${r.region},${r.seller},${r.product},${r.units},${r.unitPrice},${totalConverted}\n`;
+            const sMap = {};
+            data.forEach(d => sMap[d.seller] = (sMap[d.seller] || 0) + convert(d.total));
+            const sorted = Object.entries(sMap).sort((a,b) => b[1]-a[1]).slice(0,3);
+            
+            const medals = ['🥇','🥈','🥉'];
+            const styles = ["border-teal-400 bg-teal-50 scale-105 z-10", "border-white/50 bg-white/60", "border-white/50 bg-white/60"];
+
+            sorted.forEach((item, i) => {
+                const pct = total > 0 ? ((item[1]/total)*100).toFixed(1) : 0;
+                c.innerHTML += `
+                <div class="display-card flex flex-col justify-between h-28 shadow-md ${styles[i] || styles[1]}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xl">${medals[i]}</span>
+                            <span class="text-[10px] bg-slate-200 text-slate-600 px-1 rounded font-bold">${pct}%</span>
+                        </div>
+                    </div>
+                    <div class="mt-1">
+                        <p class="text-xs font-bold text-slate-800 truncate">${item[0]}</p>
+                        <p class="text-sm font-bold text-slate-600">${formatMoney(item[1])}</p>
+                    </div>
+                </div>`;
             });
-            
-            const link = document.createElement("a");
-            link.href = encodeURI("data:text/csv;charset=utf-8," + csv);
-            link.download = `vendas_Q1_2025_${currentCurrency}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            lucide.createIcons(); // Re-init icons for injected HTML
         }
 
-        window.onload = init;
+        function renderCustomDonut(data) {
+            const c = document.getElementById('customDonutContainer');
+            c.innerHTML = '';
+            
+            const pMap = {};
+            data.forEach(d => pMap[d.product] = (pMap[d.product] || 0) + convert(d.total));
+            const dataset = Object.entries(pMap).map(([k,v]) => ({label:k, value:v})).sort((a,b)=>b.value-a.value);
+            
+            const total = dataset.reduce((acc,i)=>acc+i.value, 0);
+            if(total === 0) { c.innerHTML = '<p class="text-slate-400">Sem dados</p>'; return; }
+
+            const size=260, stroke=24, r=(size-stroke)/2, circ=2*Math.PI*r;
+            let offset=0;
+            const colors = ['#3B82F6','#0EA5A4','#F59E0B','#6366F1','#EC4899'];
+
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", size); svg.setAttribute("height", size);
+            svg.classList.add("-rotate-90", "overflow-visible");
+
+            // Base Circle
+            const base = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            base.setAttribute("cx", size/2); base.setAttribute("cy", size/2); base.setAttribute("r", r);
+            base.setAttribute("fill", "transparent"); base.setAttribute("stroke", "#e2e8f0"); base.setAttribute("stroke-width", stroke);
+            svg.appendChild(base);
+
+            // Center Text
+            const gText = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            gText.setAttribute("transform", `rotate(90 ${size/2} ${size/2})`);
+            
+            const tLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            tLabel.setAttribute("x", "50%"); tLabel.setAttribute("y", "45%"); tLabel.setAttribute("text-anchor", "middle");
+            tLabel.classList.add("fill-slate-400", "text-xs", "font-bold", "uppercase");
+            tLabel.textContent = "Total";
+            
+            const tVal = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            tVal.setAttribute("x", "50%"); tVal.setAttribute("y", "60%"); tVal.setAttribute("text-anchor", "middle");
+            tVal.classList.add("fill-slate-700", "text-xl", "font-bold");
+            tVal.textContent = formatMoney(total);
+
+            gText.appendChild(tLabel); gText.appendChild(tVal);
+
+            dataset.forEach((d, i) => {
+                const seg = (d.value/total)*circ;
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", size/2); circle.setAttribute("cy", size/2);
+                circle.setAttribute("r", r); circle.setAttribute("fill", "transparent");
+                circle.setAttribute("stroke", colors[i%colors.length]);
+                circle.setAttribute("stroke-width", stroke);
+                circle.setAttribute("stroke-dasharray", `${seg} ${circ}`);
+                circle.setAttribute("stroke-dashoffset", -offset);
+                circle.classList.add("donut-segment");
+                
+                // Hover Effects
+                circle.onmouseenter = () => {
+                    tLabel.textContent = d.label;
+                    tVal.textContent = formatMoney(d.value);
+                    circle.setAttribute("stroke-width", stroke + 6);
+                };
+                circle.onmouseleave = () => {
+                    tLabel.textContent = "Total";
+                    tVal.textContent = formatMoney(total);
+                    circle.setAttribute("stroke-width", stroke);
+                };
+
+                svg.appendChild(circle);
+                offset += seg;
+            });
+            
+            svg.appendChild(gText);
+            c.appendChild(svg);
+        }
+
+        // Start
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
-
