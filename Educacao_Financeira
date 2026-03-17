@@ -1,0 +1,687 @@
+import React, { useEffect, useRef, useState } from "react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { ArrowRight, Download, Printer, TrendingDown, Wallet, BookOpen, FileText, ChevronDown, Calculator, ShieldCheck, TrendingUp, Lightbulb, GraduationCap, Compass, Target, MapPin, Table, CheckCircle, Briefcase, ShoppingCart } from "lucide-react";
+
+/**
+ * Componente Button Premium
+ */
+const Button = React.forwardRef(({ className = "", variant = "default", size = "default", children, ...props }, ref) => {
+  const baseStyles = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50";
+  
+  const variants = {
+    default: "bg-white text-zinc-950 hover:bg-zinc-200 shadow-md",
+    outline: "border border-zinc-700 bg-transparent text-white hover:bg-zinc-800",
+    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20",
+    ghost: "bg-transparent text-zinc-400 hover:text-white hover:bg-zinc-800",
+  };
+  
+  const sizes = {
+    default: "h-10 px-4 py-2",
+    sm: "h-9 px-3 text-xs",
+    lg: "h-12 rounded-md px-8 text-base",
+  };
+
+  return (
+    <button ref={ref} className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
+      {children}
+    </button>
+  );
+});
+Button.displayName = "Button";
+
+/**
+ * Wrapper de Animação para simular "Slides" na rolagem
+ */
+const SlideSection = ({ children, className = "", id = "" }) => {
+  return (
+    <motion.section
+      id={id}
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.7, ease: "easeOut" }}
+      className={`w-full max-w-6xl mx-auto px-4 py-16 md:py-24 ${className}`}
+    >
+      {children}
+    </motion.section>
+  );
+};
+
+/**
+ * Navegação Lateral (Apple Dock Vertical)
+ */
+const AppleDock = React.forwardRef(({ className, children, iconSize = 44, iconMagnification = 70, iconDistance = 140 }, ref) => {
+  const mouseY = useMotionValue(Infinity);
+  
+  const renderChildren = () => {
+    return React.Children.map(children, (child) => {
+      if (React.isValidElement(child) && child.type === AppleDockIcon) {
+        return React.cloneElement(child, {
+          ...child.props,
+          mouseY: mouseY,
+          size: iconSize,
+          magnification: iconMagnification,
+          distance: iconDistance,
+        });
+      }
+      return child;
+    });
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={(e) => mouseY.set(e.clientY)}
+      onMouseLeave={() => mouseY.set(Infinity)}
+      className={`flex flex-col items-center justify-center gap-3 rounded-2xl border border-zinc-800/50 p-3 backdrop-blur-md bg-zinc-950/60 shadow-2xl ${className || ''}`}
+    >
+      {renderChildren()}
+    </motion.div>
+  );
+});
+AppleDock.displayName = "AppleDock";
+
+const AppleDockIcon = ({ size = 44, magnification = 70, distance = 140, mouseY, className, children, onClick, label }) => {
+  const ref = useRef(null);
+  const padding = Math.max(6, size * 0.2);
+  const defaultMouseY = useMotionValue(Infinity);
+  
+  const distanceCalc = useTransform(mouseY ?? defaultMouseY, (val) => {
+    const bounds = ref.current?.getBoundingClientRect() ?? { y: 0, height: 0 };
+    return val - bounds.y - bounds.height / 2;
+  });
+  
+  const sizeTransform = useTransform(
+    distanceCalc,
+    [-distance, 0, distance],
+    [size, magnification, size]
+  );
+  
+  const scaleSize = useSpring(sizeTransform, { mass: 0.1, stiffness: 150, damping: 12 });
+
+  return (
+    <motion.div
+      ref={ref}
+      style={{ width: scaleSize, height: scaleSize, padding }}
+      className={`group relative flex aspect-square cursor-pointer items-center justify-center rounded-full ${className || ''}`}
+      onClick={onClick}
+    >
+      <div className="absolute right-full mr-4 bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity border border-zinc-700 shadow-xl">
+        {label}
+      </div>
+      
+      <div className="flex w-full h-full items-center justify-center rounded-full bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 hover:border-blue-500/50 text-zinc-400 hover:text-blue-400 transition-colors relative">
+        {children}
+      </div>
+    </motion.div>
+  );
+};
+AppleDockIcon.displayName = "AppleDockIcon";
+
+/**
+ * Secção 1: Hero (Capa da Apresentação)
+ */
+function HeroSection() {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.1 } },
+  };
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+  };
+
+  const scrollToNext = () => {
+    document.getElementById('slide-importancia').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative flex min-h-screen flex-col items-center justify-center px-4 py-20 text-center w-full max-w-5xl mx-auto"
+    >
+      {/* Luz de fundo decorativa */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[500px] bg-blue-600/15 blur-[120px] rounded-full pointer-events-none" />
+
+      <motion.div variants={itemVariants} className="mb-6 relative z-10">
+        <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-sm font-medium text-blue-300 backdrop-blur-sm">
+          <GraduationCap className="h-4 w-4" />
+          FAMETRO | Análise e Desenvolvimento de Sistemas
+        </span>
+      </motion.div>
+      
+      <motion.h1 variants={itemVariants} className="mb-6 text-5xl font-bold tracking-tight md:text-7xl text-white relative z-10 leading-tight">
+        O Poder da <br />
+        <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent">
+          Educação Financeira
+        </span><br />
+        no Brasil
+      </motion.h1>
+      
+      <motion.p variants={itemVariants} className="mb-10 max-w-2xl text-lg text-zinc-400 relative z-10">
+        Um guia prático desenvolvido para ajudar você a entender, organizar e transformar a sua relação com o dinheiro através da tecnologia e do conhecimento.
+      </motion.p>
+      
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 relative z-10">
+        <Button size="lg" variant="primary" className="gap-2 rounded-full" onClick={scrollToNext}>
+          Iniciar Apresentação
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </motion.div>
+
+      <motion.div variants={itemVariants} className="absolute bottom-10 animate-bounce text-zinc-500 cursor-pointer" onClick={scrollToNext}>
+        <ChevronDown className="h-8 w-8" />
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/**
+ * Dados e Componente para a Timeline Radial Orbital dos 4 Pilares
+ */
+const timelineData = [
+  {
+    id: 1,
+    title: "Gerar Renda",
+    date: "Pilar 1",
+    content: "Aumente seu valor: trabalhe, empreenda ou busque novas qualificações para aumentar seu salário base.",
+    category: "Captação",
+    icon: Briefcase,
+    relatedIds: [2],
+    status: "completed",
+    energy: 100,
+  },
+  {
+    id: 2,
+    title: "Gastar Bem",
+    date: "Pilar 2",
+    content: "Não se trata de não gastar, mas de gastar com inteligência. Evite compras por impulso e viva um degrau abaixo do que ganha.",
+    category: "Controle",
+    icon: ShoppingCart,
+    relatedIds: [1, 3],
+    status: "completed",
+    energy: 85,
+  },
+  {
+    id: 3,
+    title: "Poupar",
+    date: "Pilar 3",
+    content: "O ato de reter parte do dinheiro. Pague-se primeiro assim que o salário cai na conta. Construa seu escudo financeiro.",
+    category: "Reserva",
+    icon: Wallet,
+    relatedIds: [2, 4],
+    status: "in-progress",
+    energy: 60,
+  },
+  {
+    id: 4,
+    title: "Investir",
+    date: "Pilar 4",
+    content: "Multiplique o dinheiro que você poupou. Faça os juros compostos trabalharem para garantir a sua tranquilidade no futuro.",
+    category: "Crescimento",
+    icon: TrendingUp,
+    relatedIds: [3],
+    status: "pending",
+    energy: 20,
+  },
+];
+
+const RadialOrbitalTimeline = ({ timelineData }) => {
+  const angles = [-135, -45, 45, 135]; // Posições dos quadrantes (Top-Left, Top-Right, Bottom-Right, Bottom-Left)
+
+  return (
+    <div className="w-full flex flex-col items-center py-10 overflow-hidden">
+      {/* Desktop Radial/Orbital View */}
+      <div className="hidden lg:flex relative w-[800px] h-[600px] items-center justify-center">
+        {/* Conexões (Linhas SVG entre nós relacionados) */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+          <defs>
+            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#f97316" />
+            </linearGradient>
+          </defs>
+          {timelineData.map((item, i1) => {
+            const a1 = angles[i1];
+            const x1 = 400 + 200 * Math.cos((a1 * Math.PI) / 180); // 400 é o centro horizontal (800/2)
+            const y1 = 300 + 200 * Math.sin((a1 * Math.PI) / 180); // 300 é o centro vertical (600/2)
+
+            return item.relatedIds.map(targetId => {
+              const i2 = timelineData.findIndex(t => t.id === targetId);
+              if (i2 === -1) return null;
+              const a2 = angles[i2];
+              const x2 = 400 + 200 * Math.cos((a2 * Math.PI) / 180);
+              const y2 = 300 + 200 * Math.sin((a2 * Math.PI) / 180);
+
+              return (
+                <line 
+                  key={`${item.id}-${targetId}`}
+                  x1={x1} y1={y1} x2={x2} y2={y2}
+                  stroke="url(#lineGradient)" 
+                  strokeWidth="2"
+                  strokeDasharray="6 6"
+                  className="opacity-40"
+                />
+              );
+            });
+          })}
+        </svg>
+
+        {/* Anéis Orbitais de Fundo */}
+        <div className="absolute w-[400px] h-[400px] rounded-full border border-dashed border-zinc-700 animate-[spin_60s_linear_infinite]" />
+        <div className="absolute w-[550px] h-[550px] rounded-full border border-zinc-800/30" />
+        
+        {/* Núcleo Central */}
+        <div className="absolute z-10 w-36 h-36 rounded-full bg-blue-900/20 border border-blue-500/50 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(59,130,246,0.3)] backdrop-blur-md">
+          <Compass className="h-10 w-10 text-blue-400 mb-2" />
+          <span className="text-xs font-bold text-blue-300 text-center uppercase tracking-widest leading-tight">Sucesso<br/>Financeiro</span>
+        </div>
+
+        {/* Nós da Linha do Tempo */}
+        {timelineData.map((item, i) => {
+          const angle = angles[i];
+          const radius = 200; 
+          const x = radius * Math.cos((angle * Math.PI) / 180);
+          const y = radius * Math.sin((angle * Math.PI) / 180);
+
+          const isCompleted = item.status === 'completed';
+          const isInProgress = item.status === 'in-progress';
+          
+          const colorClass = isCompleted ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.2)]' : 
+                             isInProgress ? 'border-orange-500 bg-orange-500/10 text-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.2)]' : 
+                             'border-zinc-700 bg-zinc-900 text-zinc-500';
+          
+          const ringColor = isCompleted ? 'text-blue-500' : isInProgress ? 'text-orange-500' : 'text-zinc-600';
+
+          // Lógica de posicionamento da caixa de texto orbitando para fora
+          let textPosition = '';
+          if (angle === -135) textPosition = 'right-12 bottom-12 text-right items-end';
+          if (angle === -45) textPosition = 'left-12 bottom-12 text-left items-start';
+          if (angle === 45) textPosition = 'left-12 top-12 text-left items-start';
+          if (angle === 135) textPosition = 'right-12 top-12 text-right items-end';
+
+          return (
+            <div 
+              key={item.id}
+              className="absolute flex items-center justify-center"
+              style={{ transform: `translate(${x}px, ${y}px)` }}
+            >
+              {/* Ícone Redondo */}
+              <div className={`relative z-20 w-16 h-16 rounded-full border-2 flex items-center justify-center backdrop-blur-md transition-transform hover:scale-110 cursor-pointer ${colorClass}`}>
+                <item.icon className="w-6 h-6 relative z-10" />
+                
+                {/* Anel de Energia (Progresso SVG) */}
+                <svg className="absolute inset-0 w-full h-full -rotate-90">
+                  <circle cx="30" cy="30" r="30" fill="none" className="stroke-zinc-800" strokeWidth="2" transform="translate(1,1)" />
+                  <circle cx="30" cy="30" r="30" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="188.5" strokeDashoffset={188.5 - (188.5 * item.energy) / 100} className={`transition-all duration-1000 ${ringColor}`} transform="translate(1,1)" />
+                </svg>
+
+                <div className="absolute -top-2 -right-2 bg-zinc-900 border border-zinc-700 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
+                  {item.id}
+                </div>
+              </div>
+
+              {/* Caixa de Conteúdo */}
+              <div className={`absolute flex flex-col w-64 ${textPosition}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-mono text-zinc-500">{item.date}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wider ${isCompleted ? 'bg-blue-500/20 text-blue-400' : isInProgress ? 'bg-orange-500/20 text-orange-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                    {item.category}
+                  </span>
+                </div>
+                <h4 className="text-xl font-bold text-white mb-2 leading-tight">{item.title}</h4>
+                <p className="text-sm text-zinc-400 leading-relaxed">{item.content}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Mobile Vertical View */}
+      <div className="flex lg:hidden flex-col gap-8 relative w-full px-4 max-w-md mx-auto mt-4">
+        {/* Linha pontilhada no fundo conectando os itens */}
+        <div className="absolute left-[43px] top-8 bottom-8 w-px bg-zinc-800 border-dashed" />
+        
+        {timelineData.map((item, i) => {
+          const isCompleted = item.status === 'completed';
+          const isInProgress = item.status === 'in-progress';
+          
+          const colorClass = isCompleted ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 
+                             isInProgress ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 
+                             'border-zinc-700 bg-zinc-900 text-zinc-500';
+
+          return (
+            <div key={item.id} className="relative z-10 flex gap-5 items-start">
+              <div className="flex flex-col items-center">
+                <div className={`relative w-14 h-14 shrink-0 rounded-full border-2 flex items-center justify-center bg-zinc-950 ${colorClass}`}>
+                  <item.icon className="w-5 h-5 relative z-10" />
+                  <div className="absolute -top-1 -right-1 bg-zinc-900 border border-zinc-700 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm">
+                    {item.id}
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 bg-zinc-900/50 border border-zinc-800/80 p-5 rounded-2xl shadow-lg">
+                <div className="flex items-center flex-wrap gap-2 mb-2">
+                  <span className="text-xs font-mono text-zinc-500">{item.date}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold ${isCompleted ? 'bg-blue-500/20 text-blue-400' : isInProgress ? 'bg-orange-500/20 text-orange-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                    {item.category}
+                  </span>
+                  <span className="text-[10px] text-zinc-500 ml-auto flex gap-1">
+                    Energia: {item.energy}%
+                  </span>
+                </div>
+                <h4 className="text-lg font-bold text-white mb-2">{item.title}</h4>
+                <p className="text-sm text-zinc-400">{item.content}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+
+/**
+ * Componente Principal que agrupa os "Slides" (Secções)
+ */
+export default function App() {
+  return (
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+      <HeroSection />
+
+      {/* PARTE 01: Educação Financeira e Importância */}
+      <SlideSection id="slide-importancia">
+        <div className="flex flex-col mb-12 items-center text-center">
+          <span className="text-blue-500 font-semibold tracking-wider uppercase text-sm mb-2">Parte 01</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center justify-center gap-3">
+            <Lightbulb className="h-8 w-8 text-yellow-400" />
+            O que é Educação Financeira e por que importa?
+          </h2>
+          <p className="text-zinc-400 mt-4 max-w-3xl text-lg leading-relaxed">
+            Educação financeira não é apenas sobre economizar dinheiro. É sobre entender como o dinheiro funciona no mundo e usá-lo como uma ferramenta para alcançar qualidade de vida, segurança e liberdade.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          {[
+            { 
+              icon: <ShieldCheck className="h-8 w-8 text-green-400" />, 
+              title: "Segurança e Previsibilidade", 
+              desc: "Permite criar reservas de emergência, evitando que imprevistos (como desemprego ou problemas de saúde) se transformem em dívidas impagáveis."
+            },
+            { 
+              icon: <Target className="h-8 w-8 text-blue-400" />, 
+              title: "Realização de Sonhos", 
+              desc: "Transforma desejos abstratos (comprar um carro, viajar, fazer faculdade) em metas calculáveis e perfeitamente alcançáveis."
+            },
+            { 
+              icon: <TrendingUp className="h-8 w-8 text-purple-400" />, 
+              title: "Saúde Mental", 
+              desc: "Reduz drasticamente a ansiedade e o estresse causados pela falta de dinheiro antes do fim do mês e pelas cobranças de dívidas."
+            }
+          ].map((item, idx) => (
+            <div key={idx} className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-2xl hover:bg-zinc-900 hover:border-blue-900/50 transition-all shadow-lg">
+              <div className="bg-zinc-950 w-16 h-16 rounded-full flex items-center justify-center mb-6 border border-zinc-800">
+                {item.icon}
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+              <p className="text-zinc-400 leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </SlideSection>
+
+      {/* PARTE 02: Como Organizar as Finanças */}
+      <SlideSection id="slide-organizar" className="bg-zinc-900/20 border-t border-zinc-800/50">
+        <div className="flex flex-col mb-16 items-center text-center">
+          <span className="text-blue-500 font-semibold tracking-wider uppercase text-sm mb-2">Parte 02</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center justify-center gap-3">
+            <Calculator className="h-8 w-8 text-blue-500" />
+            Como Organizar as Finanças na Prática
+          </h2>
+          <p className="text-zinc-400 mt-4 max-w-2xl text-lg">
+            A teoria é importante, mas a execução muda o jogo. Siga estes 3 passos fundamentais para assumir o controle do seu dinheiro hoje mesmo.
+          </p>
+        </div>
+
+        <div className="space-y-6 max-w-5xl mx-auto relative">
+          {/* Linha conectora vertical (visível apenas em telas maiores) */}
+          <div className="hidden md:block absolute left-8 top-10 bottom-10 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-green-500 opacity-20"></div>
+
+          {/* 2.1 Mapeie seu Custo de Vida */}
+          <div className="flex flex-col md:flex-row gap-6 items-start bg-zinc-950 p-6 md:p-8 rounded-2xl border border-zinc-800 relative z-10 shadow-lg">
+            <div className="bg-blue-900/30 border border-blue-500/30 text-blue-400 font-black text-2xl w-16 h-16 rounded-2xl flex items-center justify-center shrink-0">
+              2.1
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-3 flex items-center gap-2">
+                <MapPin className="h-6 w-6 text-blue-400" /> Mapeie o seu Custo de Vida
+              </h3>
+              <p className="text-zinc-400 leading-relaxed text-lg">
+                Antes de cortar gastos, você precisa saber para onde o dinheiro está indo. Anote <strong>absolutamente tudo</strong> durante 30 dias (do aluguel ao cafezinho). Separe os seus custos em duas categorias: Despesas Fixas (o que você precisa para sobreviver) e Despesas Variáveis (lazer, compras). O seu padrão de vida não pode custar mais do que você ganha.
+              </p>
+            </div>
+          </div>
+
+          {/* 2.2 Determinar Gastos */}
+          <div className="flex flex-col md:flex-row gap-6 items-start bg-zinc-950 p-6 md:p-8 rounded-2xl border border-zinc-800 relative z-10 shadow-lg">
+            <div className="bg-purple-900/30 border border-purple-500/30 text-purple-400 font-black text-2xl w-16 h-16 rounded-2xl flex items-center justify-center shrink-0">
+              2.2
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-3 flex items-center gap-2">
+                <TrendingDown className="h-6 w-6 text-purple-400" /> Determinar Limites de Gastos
+              </h3>
+              <p className="text-zinc-400 leading-relaxed text-lg">
+                Use a regra do <strong>50-30-20</strong>. Tente destinar 50% da sua renda para as necessidades básicas (moradia, alimentação, contas), 30% para desejos pessoais (lazer, assinaturas, saídas) e, obrigatoriamente, 20% para quitar dívidas e criar a sua reserva financeira. Estabeleça tetos de gastos para cada categoria e não os ultrapasse.
+              </p>
+            </div>
+          </div>
+
+          {/* 2.3 Faça Investimentos Futuros */}
+          <div className="flex flex-col md:flex-row gap-6 items-start bg-zinc-950 p-6 md:p-8 rounded-2xl border border-zinc-800 relative z-10 shadow-lg">
+            <div className="bg-green-900/30 border border-green-500/30 text-green-400 font-black text-2xl w-16 h-16 rounded-2xl flex items-center justify-center shrink-0">
+              2.3
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-3 flex items-center gap-2">
+                <TrendingUp className="h-6 w-6 text-green-400" /> Faça Investimentos Futuros
+              </h3>
+              <p className="text-zinc-400 leading-relaxed text-lg">
+                Assim que a sua dívida estiver controlada e a reserva de emergência montada (suficiente para cobrir 6 meses de custo de vida), coloque o seu dinheiro para trabalhar para você. Comece com Renda Fixa (Tesouro Direto, CDBs com liquidez diária) que são seguros e rendem juros compostos a seu favor, vencendo a inflação ao longo dos anos.
+              </p>
+            </div>
+          </div>
+        </div>
+      </SlideSection>
+
+      {/* PARTE 03: Os 4 Pilares da Educação Financeira (Mapa para o Sucesso) */}
+      <SlideSection id="slide-pilares" className="bg-zinc-950 border-t border-zinc-800/50">
+        <div className="flex flex-col mb-16 items-center text-center">
+          <span className="text-blue-500 font-semibold tracking-wider uppercase text-sm mb-2">Parte 03</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center justify-center gap-3">
+            <Compass className="h-8 w-8 text-blue-400" />
+            Os 4 Pilares: O Mapa para o Sucesso
+          </h2>
+          <p className="text-zinc-400 mt-4 max-w-3xl text-lg">
+            A jornada financeira saudável é sustentada por quatro atitudes comportamentais. Veja este mapa como o seu caminho definitivo para a prosperidade.
+          </p>
+        </div>
+
+        <RadialOrbitalTimeline timelineData={timelineData} />
+      </SlideSection>
+
+      {/* PLANILHA FAMETRO (Substituindo a História Real) */}
+      <SlideSection id="slide-planilha" className="bg-zinc-900/30 border-t border-zinc-800/50">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-gradient-to-br from-blue-900/20 via-zinc-900 to-zinc-950 border border-blue-500/30 p-8 md:p-12 rounded-3xl relative shadow-2xl overflow-hidden">
+            {/* Efeito luminoso no fundo do card */}
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-blue-600/10 blur-[80px] rounded-full pointer-events-none"></div>
+
+            <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center">
+              <div className="w-full md:w-2/3">
+                <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs px-3 py-1 rounded-full mb-4 border border-blue-500/20 font-bold uppercase tracking-wider">
+                  <Table className="h-4 w-4" /> Projeto ADS FAMETRO
+                </div>
+                
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Planilha Automática de Organização Financeira
+                </h2>
+                
+                <p className="text-zinc-300 leading-relaxed text-lg mb-6">
+                  Nós, estudantes de <strong>Análise e Desenvolvimento de Sistemas da FAMETRO</strong>, unimos os conceitos de tecnologia e educação financeira para desenvolver uma ferramenta prática para você.
+                </p>
+
+                <ul className="space-y-3 mb-8">
+                  {[
+                    "Calcula automaticamente a regra 50-30-20",
+                    "Gráficos visuais de onde seu dinheiro está indo",
+                    "Simulador de Reserva de Emergência integrado",
+                    "Totalmente gratuita e fácil de usar"
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-zinc-400">
+                      <CheckCircle className="h-5 w-5 text-green-400 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                
+                <Button size="lg" variant="primary" className="w-full md:w-auto gap-2 rounded-xl text-base shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+                  <Download className="h-5 w-5" />
+                  Baixar Planilha Gratuita
+                </Button>
+                <p className="text-xs text-zinc-500 mt-3">*Requer Microsoft Excel ou Google Sheets</p>
+              </div>
+
+              <div className="w-full md:w-1/3 flex justify-center">
+                <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
+                  <div className="flex items-center gap-2 mb-3 border-b border-zinc-800 pb-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-full bg-zinc-800 rounded"></div>
+                    <div className="h-4 w-3/4 bg-blue-900/50 rounded"></div>
+                    <div className="h-4 w-5/6 bg-zinc-800 rounded"></div>
+                    <div className="h-4 w-1/2 bg-green-900/50 rounded"></div>
+                    <div className="h-4 w-full bg-zinc-800 rounded"></div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-zinc-800 flex justify-between items-end">
+                    <div className="w-8 h-12 bg-blue-500/50 rounded-t"></div>
+                    <div className="w-8 h-8 bg-purple-500/50 rounded-t"></div>
+                    <div className="w-8 h-16 bg-green-500/50 rounded-t"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </SlideSection>
+
+      {/* Slide 9: Fontes e Referências */}
+      <SlideSection id="slide-fontes" className="bg-zinc-950 border-t border-zinc-800/50">
+        <div className="flex flex-col mb-10">
+          <span className="text-blue-500 font-semibold tracking-wider uppercase text-sm mb-2">Documentação</span>
+          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+            <FileText className="h-8 w-8 text-blue-500" />
+            Fontes e Referências
+          </h2>
+          <p className="text-zinc-400 mt-3 max-w-3xl">
+            Clique nas fontes abaixo para ser redirecionado aos documentos oficiais e estudos originais.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {[
+            {
+              url: "https://www.cnc.org.br/editorias/economia/pesquisas/pesquisa-nacional-de-endividamento-e-inadimplencia-do-consumidor-peic",
+              org: "OABPrev-PR / Peic",
+              date: "Dezembro 2024",
+              title: "Pesquisa de Endividamento e Inadimplência do Consumidor (Peic)",
+              desc: "Documenta que 76,7% das famílias estão endividadas e 13% não possuem condições de honrar compromissos."
+            },
+            {
+              url: "https://www.gov.br/cvm/pt-br/assuntos/educacao-e-inclusao-financeira",
+              org: "CNDL / CVM",
+              date: "2024",
+              title: "Educação Financeira como Política Pública e Reserva",
+              desc: "Estudo revela que 67% da população não possui qualquer reserva de emergência."
+            }
+          ].map((ref, i) => (
+            <a 
+              key={i} 
+              href={ref.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col md:flex-row md:items-center justify-between bg-zinc-900/50 border border-zinc-800 p-5 rounded-xl hover:border-blue-500/50 hover:bg-zinc-900/80 transition-all gap-6 shadow-md"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded font-mono">{ref.org}</span>
+                  <span className="text-xs text-zinc-500 font-mono">{ref.date}</span>
+                </div>
+                <h4 className="text-white font-bold text-lg mb-1 group-hover:text-blue-400 transition-colors">{ref.title}</h4>
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-4xl">{ref.desc}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+        
+        <div className="mt-8 p-4 bg-zinc-900/30 border border-zinc-800 rounded flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="h-6 w-6 text-blue-500" />
+            <p className="text-sm text-zinc-400">
+              Projeto desenvolvido pela turma de Análise e Desenvolvimento de Sistemas (FAMETRO).
+            </p>
+          </div>
+          <div className="flex gap-3 mt-4 md:mt-0">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Printer className="h-4 w-4" />
+              Imprimir
+            </Button>
+            <Button variant="primary" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Baixar PDF
+            </Button>
+          </div>
+        </div>
+      </SlideSection>
+
+      {/* Menu Dock Vertical de Navegação */}
+      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden lg:block">
+        <AppleDock iconMagnification={75} iconDistance={150}>
+          {[
+            { icon: <Compass className="w-[50%] h-[50%]" />, label: "Início", target: "top", num: "00" },
+            { icon: <Lightbulb className="w-[50%] h-[50%]" />, label: "Parte 01: Importância", target: "slide-importancia", num: "01" },
+            { icon: <Calculator className="w-[50%] h-[50%]" />, label: "Parte 02: Como Organizar", target: "slide-organizar", num: "02" },
+            { icon: <Target className="w-[50%] h-[50%]" />, label: "Parte 03: Pilares", target: "slide-pilares", num: "03" },
+            { icon: <Table className="w-[50%] h-[50%]" />, label: "Planilha Gratuita ADS", target: "slide-planilha", num: "04" },
+            { icon: <FileText className="w-[50%] h-[50%]" />, label: "Fontes", target: "slide-fontes", num: "05" }
+          ].map((item, idx) => (
+            <AppleDockIcon
+              key={idx}
+              label={item.label}
+              onClick={() => {
+                if (item.target === 'top') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+            >
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white shadow-sm border border-zinc-900 group-hover:bg-blue-500 transition-colors">
+                {item.num}
+              </span>
+              {item.icon}
+            </AppleDockIcon>
+          ))}
+        </AppleDock>
+      </div>
+
+    </div>
+  );
+}
